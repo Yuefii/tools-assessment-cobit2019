@@ -6,7 +6,7 @@ import (
 )
 
 type UserRepository interface {
-	GetAllUsers() ([]model.User, error)
+	GetAllUsers(page int, limit int, search string) ([]model.User, int64, error)
 	GetUserByID(id uint) (*model.User, error)
 	GetUserByEmail(email string) (*model.User, error)
 	GetRoleByName(name string) (*model.Role, error)
@@ -23,10 +23,23 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{db}
 }
 
-func (r *userRepository) GetAllUsers() ([]model.User, error) {
+func (r *userRepository) GetAllUsers(page int, limit int, search string) ([]model.User, int64, error) {
 	var users []model.User
-	err := r.db.Preload("Role").Find(&users).Error
-	return users, err
+	var total int64
+
+	query := r.db.Model(&model.User{})
+	if search != "" {
+		query = query.Where("name LIKE ? OR email LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err = query.Preload("Role").Offset(offset).Limit(limit).Find(&users).Error
+	return users, total, err
 }
 
 func (r *userRepository) GetUserByID(id uint) (*model.User, error) {

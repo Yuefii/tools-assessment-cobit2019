@@ -16,11 +16,28 @@ func NewUserHandler(s service.UserService) *UserHandler {
 }
 
 func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
-	users, err := h.userService.GetAllUsers()
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	search := c.Query("search", "")
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	users, total, err := h.userService.GetAllUsers(page, limit, search)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"data": users})
+	return c.JSON(fiber.Map{
+		"data":        users,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": (total + int64(limit) - 1) / int64(limit),
+	})
 }
 
 func (h *UserHandler) CreateUser(c *fiber.Ctx) error {

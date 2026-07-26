@@ -22,7 +22,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Search, Edit2, Trash2, Shield, User as UserIcon, UserCheck } from 'lucide-react';
+import { Loader2, Plus, Search, Edit2, Trash2, Shield, User as UserIcon, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ROLES = ['Admin', 'Assessor', 'Auditee'];
@@ -32,6 +32,11 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
@@ -39,13 +44,23 @@ export default function Users() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Auditee' });
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset page on new search
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  useEffect(() => { fetchUsers(); }, [page, limit, debouncedSearch]);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await userAPI.getAll();
+      const data = await userAPI.getAll(page, limit, debouncedSearch);
       setUsers(data.data || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.total_pages || 0);
       setError('');
     } catch (e: any) {
       setError(e.message);
@@ -95,11 +110,6 @@ export default function Users() {
     }
   };
 
-  const filtered = users.filter(u =>
-    u.name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
-  );
-
   const getRoleIcon = (roleName: string) => {
     if (roleName === 'Admin') return <Shield className="w-3.5 h-3.5 mr-1" />;
     if (roleName === 'Assessor') return <UserCheck className="w-3.5 h-3.5 mr-1" />;
@@ -136,7 +146,7 @@ export default function Users() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg">Daftar Pengguna</CardTitle>
-              <CardDescription>Terdapat {filtered.length} pengguna di dalam sistem</CardDescription>
+              <CardDescription>Terdapat {total} pengguna di dalam sistem</CardDescription>
             </div>
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -167,8 +177,8 @@ export default function Users() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.length > 0 ? (
-                    filtered.map(u => (
+                  {users.length > 0 ? (
+                    users.map(u => (
                       <TableRow key={u.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="py-4">
                           <div className="flex items-center gap-4">
@@ -211,6 +221,37 @@ export default function Users() {
             </div>
           )}
         </CardContent>
+        {/* Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="p-4 border-t border-border flex items-center justify-between bg-muted/20">
+            <div className="text-sm text-muted-foreground">
+              Menampilkan {users.length} dari {total} pengguna
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Sebelumnya
+              </Button>
+              <div className="text-sm font-medium">
+                Halaman {page} dari {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Selanjutnya
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Modal / Dialog Form */}

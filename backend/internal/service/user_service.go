@@ -9,7 +9,7 @@ import (
 )
 
 type UserService interface {
-	GetAllUsers() ([]UserResponse, error)
+	GetAllUsers(page int, limit int, search string) ([]UserResponse, int64, error)
 	GetUserByID(id uint) (*UserResponse, error)
 	CreateUser(input RegisterInput) (*model.User, error)
 	UpdateUser(id uint, input UpdateUserInput) (*UserResponse, error)
@@ -51,10 +51,10 @@ func toUserResponse(u *model.User) *UserResponse {
 	return resp
 }
 
-func (s *userService) GetAllUsers() ([]UserResponse, error) {
-	users, err := s.userRepo.GetAllUsers()
+func (s *userService) GetAllUsers(page int, limit int, search string) ([]UserResponse, int64, error) {
+	users, total, err := s.userRepo.GetAllUsers(page, limit, search)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var result []UserResponse
 	for _, u := range users {
@@ -62,7 +62,10 @@ func (s *userService) GetAllUsers() ([]UserResponse, error) {
 		resp := toUserResponse(&u)
 		result = append(result, *resp)
 	}
-	return result, nil
+	if result == nil {
+		result = []UserResponse{}
+	}
+	return result, total, nil
 }
 
 func (s *userService) GetUserByID(id uint) (*UserResponse, error) {

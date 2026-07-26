@@ -25,7 +25,7 @@ export const authAPI = {
 
 export const userAPI = {
   getMe: () => fetch(`${BASE_URL}/me`, { headers: headers() }).then(handleResponse),
-  getAll: () => fetch(`${BASE_URL}/users`, { headers: headers() }).then(handleResponse),
+  getAll: (page = 1, limit = 10, search = '') => fetch(`${BASE_URL}/users?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, { headers: headers() }).then(handleResponse),
   create: (data) => fetch(`${BASE_URL}/users`, { method: 'POST', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
   update: (id, data) => fetch(`${BASE_URL}/users/${id}`, { method: 'PUT', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
   delete: (id) => fetch(`${BASE_URL}/users/${id}`, { method: 'DELETE', headers: headers() }).then(handleResponse),
