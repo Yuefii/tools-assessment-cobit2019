@@ -2,12 +2,30 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { assessmentAPI, userAPI, cobitAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { 
+  ClipboardList, 
+  Activity, 
+  CheckCircle2, 
+  Users, 
+  Network,
+  ArrowRight,
+  BarChart3
+} from "lucide-react";
 
 export default function Dashboard() {
-  const { user, isAdmin, isAssessor } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ total: 0, completed: 0, active: 0, users: 0, domains: 0 });
-  const [recentAssessments, setRecentAssessments] = useState([]);
+  const [recentAssessments, setRecentAssessments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,8 +48,8 @@ export default function Dashboard() {
 
       setStats({
         total: assessments.length,
-        completed: assessments.filter(a => a.status === 'completed').length,
-        active: assessments.filter(a => a.status === 'active').length,
+        completed: assessments.filter((a: any) => a.status === 'completed').length,
+        active: assessments.filter((a: any) => a.status === 'active').length,
         users: usersCount,
         domains: domainsCount,
       });
@@ -43,118 +61,172 @@ export default function Dashboard() {
     }
   };
 
-  const StatusBadge = ({ status }) => {
-    const styles = {
-      completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      active: 'bg-blue-100 text-blue-700 border-blue-200',
-      draft: 'bg-slate-100 text-slate-700 border-slate-200',
+  const StatusBadge = ({ status }: { status: string }) => {
+    // We use custom tailwind classes on top of the outline badge to get that modern specific color tint
+    const customColors: Record<string, string> = {
+      completed: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100/80 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50',
+      active: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100/80 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50',
+      draft: 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-100/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
     };
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || styles.draft}`}>
+      <Badge variant="outline" className={`font-semibold ${customColors[status] || customColors.draft}`}>
         {status?.toUpperCase()}
-      </span>
+      </Badge>
     );
   };
 
   if (loading) return (
-    <div className="flex justify-center items-center py-24">
-      <div className="w-8 h-8 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+    <div className="flex h-[50vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
     </div>
   );
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-6 pb-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-500/20">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -mr-20 -mt-20"></div>
-        <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-white/5 rounded-full -mb-12"></div>
+      <div className="relative overflow-hidden rounded-xl bg-primary px-8 py-10 text-primary-foreground shadow-md">
+        <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
+        <div className="absolute -bottom-12 left-[30%] h-48 w-48 rounded-full bg-white/10 blur-2xl"></div>
         <div className="relative z-10">
-          <p className="text-indigo-200 font-medium text-sm mb-1">Selamat Datang,</p>
-          <h1 className="text-3xl font-extrabold mb-2">{user?.name || 'User'}</h1>
-          <p className="text-indigo-200">COBIT 2019 IT Maturity Assessment Platform — {user?.role?.name}</p>
+          <p className="mb-1 text-sm font-medium text-primary-foreground/80">Selamat Datang,</p>
+          <h1 className="mb-2 text-3xl font-bold tracking-tight">{user?.name || 'User'}</h1>
+          <p className="text-primary-foreground/90 max-w-[600px] text-sm">
+            COBIT 2019 IT Maturity Assessment Platform — {user?.role?.name}
+          </p>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard label="Total Assessment" value={stats.total} icon="📋" color="indigo" />
-        <StatCard label="Aktif" value={stats.active} icon="⚡" color="blue" />
-        <StatCard label="Selesai" value={stats.completed} icon="✅" color="emerald" />
-        {isAdmin && isAdmin() ? (
-          <StatCard label="Total Pengguna" value={stats.users} icon="👥" color="violet" />
-        ) : (
-          <StatCard label="COBIT Domains" value={stats.domains} icon="🏗️" color="violet" />
-        )}
-      </div>
-
-      {/* COBIT Level Reference */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <h3 className="text-lg font-bold text-slate-800 mb-4">📊 Referensi Capability Level COBIT 2019</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { level: 0, name: 'Incomplete', color: 'bg-red-50 border-red-200 text-red-700', desc: '0-15%' },
-            { level: 1, name: 'Initial', color: 'bg-orange-50 border-orange-200 text-orange-700', desc: '15-50%' },
-            { level: 2, name: 'Managed', color: 'bg-amber-50 border-amber-200 text-amber-700', desc: '50-70%' },
-            { level: 3, name: 'Defined', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', desc: '70-85%' },
-            { level: 4, name: 'Quantitatively Managed', color: 'bg-green-50 border-green-200 text-green-700', desc: '85-95%' },
-            { level: 5, name: 'Optimizing', color: 'bg-emerald-50 border-emerald-200 text-emerald-700', desc: '95-100%' },
-          ].map(l => (
-            <div key={l.level} className={`border rounded-xl p-3 text-center ${l.color}`}>
-              <div className="text-2xl font-black mb-1">{l.level}</div>
-              <div className="text-xs font-bold">{l.name}</div>
-              <div className="text-xs opacity-70 mt-0.5">{l.desc}</div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Assessment</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Assessment Aktif</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.active}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.completed}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {isAdmin && isAdmin() ? "Total Pengguna" : "COBIT Domains"}
+            </CardTitle>
+            {isAdmin && isAdmin() ? (
+              <Users className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Network className="h-4 w-4 text-muted-foreground" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isAdmin && isAdmin() ? stats.users : stats.domains}
             </div>
-          ))}
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Recent Assessments */}
-      {recentAssessments.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="text-lg font-bold text-slate-800">Assessment Terkini</h3>
-            <button onClick={() => navigate('/dashboard/assessments')} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Lihat Semua →</button>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {recentAssessments.map(a => (
-              <div key={a.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                <div>
-                  <p className="font-semibold text-slate-800">{a.title}</p>
-                  <p className="text-sm text-slate-500">{a.domain?.code} — {a.domain?.name}</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <StatusBadge status={a.status} />
-                  <button
-                    onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                  >
-                    Laporan →
-                  </button>
-                </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Recent Assessments */}
+        <Card className="col-span-4 lg:col-span-4">
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle>Assessment Terkini</CardTitle>
+              <CardDescription>
+                Daftar assessment terakhir yang sedang atau telah berjalan.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/assessments')} className="hidden sm:flex">
+              Lihat Semua
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {recentAssessments.length > 0 ? (
+              <div className="space-y-3">
+                {recentAssessments.map(a => (
+                  <div key={a.id} className="flex items-center justify-between rounded-lg border p-3 bg-card hover:bg-accent/50 transition-colors">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium leading-none">{a.title}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {a.domain?.code} — {a.domain?.name}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <StatusBadge status={a.status} />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+                        onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)}
+                        title="Lihat Laporan"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                        <span className="sr-only">Laporan</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+            ) : (
+              <div className="flex h-[150px] items-center justify-center rounded-lg border border-dashed">
+                <p className="text-sm text-muted-foreground">Belum ada assessment.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-function StatCard({ label, value, icon, color }) {
-  const colors = {
-    indigo: 'from-indigo-500 to-indigo-600',
-    blue: 'from-blue-500 to-blue-600',
-    emerald: 'from-emerald-500 to-emerald-600',
-    violet: 'from-violet-500 to-violet-600',
-    amber: 'from-amber-500 to-amber-600',
-  };
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-all duration-200 group">
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors[color]} flex items-center justify-center text-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform duration-200`}>
-        {icon}
+        {/* COBIT Level Reference */}
+        <Card className="col-span-4 lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Capability Level</CardTitle>
+            <CardDescription>Referensi skala target level COBIT 2019.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { level: 0, name: 'Incomplete', desc: '0-15%' },
+                { level: 1, name: 'Initial', desc: '15-50%' },
+                { level: 2, name: 'Managed', desc: '50-70%' },
+                { level: 3, name: 'Defined', desc: '70-85%' },
+                { level: 4, name: 'Quantitatively', desc: '85-95%' },
+                { level: 5, name: 'Optimizing', desc: '95-100%' },
+              ].map(l => (
+                <div key={l.level} className="flex flex-col items-start justify-center rounded-md border p-3 bg-muted/30">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-primary/10 text-xs font-bold text-primary">
+                      {l.level}
+                    </span>
+                    <span className="text-[11px] font-semibold tracking-tight">{l.name}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground font-medium pl-[28px] w-full text-left">
+                    Target: {l.desc}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <p className="text-3xl font-black text-slate-800 mb-1">{value}</p>
-      <p className="text-sm font-medium text-slate-500">{label}</p>
     </div>
   );
 }
