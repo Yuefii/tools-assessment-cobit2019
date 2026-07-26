@@ -64,7 +64,7 @@ export default function Navbar() {
 
   return (
     <>
-    <header className="h-16 bg-background border-b flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 shadow-sm">
+    <header className="h-16 bg-background border-b flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-2" />
         <h2 className="font-semibold text-foreground text-sm hidden md:block">COBIT 2019 Assessment Tool</h2>

@@ -51,11 +51,11 @@ export default function Sidebar() {
 
   return (
     <ShadcnSidebar>
-      <SidebarHeader className="border-b p-4">
+      <SidebarHeader className="h-16 border-b flex flex-col justify-center px-4">
         <div className="flex items-center gap-3">
           <div className="flex flex-col overflow-hidden">
-            <span className="font-bold text-sm tracking-wide leading-tight truncate">COBIT Tool</span>
-            <span className="text-[10px] text-muted-foreground truncate">Assessment Platform</span>
+            <span className="font-bold text-lg tracking-wide leading-tight truncate">COBIT Tool</span>
+            <span className="text-xs text-muted-foreground truncate">Assessment Platform</span>
           </div>
         </div>
       </SidebarHeader>
