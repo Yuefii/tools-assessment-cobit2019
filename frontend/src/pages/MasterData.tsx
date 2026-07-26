@@ -1,25 +1,35 @@
 import { useState, useEffect } from 'react';
 import { cobitAPI } from '../services/api';
-
-const CHEVRON_DOWN = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-  </svg>
-);
-const CHEVRON_RIGHT = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-  </svg>
-);
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown, ChevronRight, Plus, FolderOpen, Loader2, Info, AlertCircle, ListTree } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 export default function MasterData() {
-  const [domains, setDomains] = useState([]);
+  const [domains, setDomains] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [expanded, setExpanded] = useState({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   // Modal state
-  const [modal, setModal] = useState({ open: false, type: '', parentId: null, parentName: '' });
+  const [modal, setModal] = useState({ open: false, type: '', parentId: null as number | null, parentName: '' });
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ code: '', name: '', description: '' });
 
@@ -30,23 +40,24 @@ export default function MasterData() {
     try {
       const data = await cobitAPI.getDomains();
       setDomains(data.data || []);
-    } catch (e) {
-      setError(e.message);
+      setError('');
+    } catch (e: any) {
+      setError(e.message || 'Terjadi kesalahan');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const openModal = (type, parentId = null, parentName = '') => {
+  const openModal = (type: string, parentId: number | null = null, parentName = '') => {
     setForm({ code: '', name: '', description: '' });
     setModal({ open: true, type, parentId, parentName });
   };
 
   const closeModal = () => setModal({ open: false, type: '', parentId: null, parentName: '' });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
@@ -62,30 +73,21 @@ export default function MasterData() {
       }
       closeModal();
       await fetchDomains();
-    } catch (e) {
-      alert('Gagal menyimpan: ' + e.message);
+    } catch (e: any) {
+      alert('Gagal menyimpan: ' + (e.message || 'Terjadi kesalahan'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const typeLabels = {
+  const typeLabels: Record<string, string> = {
     domain: 'Domain COBIT',
     objective: 'Objective',
     practice: 'Practice / Kontrol',
     activity: 'Activity / Pertanyaan',
   };
 
-  const domainColors = {
-    EDM: 'from-purple-500 to-purple-600',
-    APO: 'from-blue-500 to-blue-600',
-    BAI: 'from-cyan-500 to-cyan-600',
-    DSS: 'from-indigo-500 to-indigo-600',
-    MEA: 'from-emerald-500 to-emerald-600',
-  };
-
-  // Count total questions per domain
-  const countActivities = (domain) => {
+  const countActivities = (domain: any) => {
     let n = 0;
     for (const obj of (domain.objectives || [])) {
       for (const prac of (obj.practices || [])) {
@@ -96,291 +98,313 @@ export default function MasterData() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">COBIT 2019 Master Data</h1>
-          <p className="text-slate-500">Kelola hierarki Domain → Objective → Practice → Activity.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">COBIT 2019 Master Data</h1>
+          <p className="text-sm text-muted-foreground mt-1">Kelola hierarki Domain → Objective → Practice → Activity.</p>
         </div>
-        <button
-          id="add-domain-btn"
-          onClick={() => openModal('domain')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow-sm shadow-indigo-200 transition-all font-medium text-sm flex items-center"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
+        <Button onClick={() => openModal('domain')} className="h-10 px-5 font-medium">
+          <Plus className="mr-2 h-4 w-4" />
           Tambah Domain
-        </button>
+        </Button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-xs">
-        {[
-          { label: 'Domain', color: 'bg-slate-800 text-white' },
-          { label: 'Objective', color: 'bg-indigo-100 text-indigo-700' },
-          { label: 'Practice', color: 'bg-blue-100 text-blue-700' },
-          { label: 'Activity / Pertanyaan', color: 'bg-emerald-100 text-emerald-700' },
-        ].map(l => (
-          <span key={l.label} className={`px-2.5 py-1 rounded-full font-semibold ${l.color}`}>{l.label}</span>
-        ))}
-      </div>
-
-      {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100">{error}</div>}
+      {error && (
+        <div className="flex items-center gap-2 p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : domains.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="text-4xl mb-4">📂</div>
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">Belum Ada Data COBIT</h3>
-          <p className="text-slate-500 mb-6">Data COBIT 2019 akan otomatis diisi saat pertama kali backend dijalankan.</p>
-          <button onClick={() => openModal('domain')} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition-colors">
+        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed bg-muted/30">
+          <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
+          <CardTitle className="mb-2">Belum Ada Data COBIT</CardTitle>
+          <CardDescription className="mb-6 max-w-md">
+            Data COBIT 2019 akan otomatis diisi saat pertama kali backend dijalankan, atau Anda bisa menambahkannya secara manual.
+          </CardDescription>
+          <Button onClick={() => openModal('domain')} variant="outline" className="mt-2 h-10 px-5 font-medium">
+            <Plus className="mr-2 h-4 w-4" />
             Tambah Domain Manual
-          </button>
-        </div>
+          </Button>
+        </Card>
       ) : (
         <div className="space-y-4">
           {domains.map(domain => {
             const domKey = `d-${domain.id}`;
-            const isOpen = expanded[domKey];
+            const isDomainOpen = expanded[domKey];
             const totalQ = countActivities(domain);
-            const gradient = domainColors[domain.code] || 'from-slate-600 to-slate-700';
 
             return (
-              <div key={domain.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <Collapsible 
+                key={domain.id} 
+                open={isDomainOpen} 
+                onOpenChange={() => toggle(domKey)}
+                className="rounded-lg border bg-card text-card-foreground shadow-sm"
+              >
                 {/* Domain Header */}
-                <div
-                  className={`bg-gradient-to-r ${gradient} text-white p-5 flex items-center justify-between cursor-pointer`}
-                  onClick={() => toggle(domKey)}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center font-black text-lg border border-white/20">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 gap-6 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-start sm:items-center gap-5 flex-1">
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="icon" className="shrink-0 h-10 w-10 text-muted-foreground hover:text-foreground">
+                        {isDomainOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border bg-muted font-bold text-lg text-foreground shadow-sm">
                       {domain.code}
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold">{domain.name}</h3>
-                      <p className="text-white/70 text-sm">{domain.description}</p>
+                    <div className="flex-1 pr-4">
+                      <h3 className="font-semibold tracking-tight text-lg mb-1">{domain.name}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{domain.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right hidden sm:block">
-                      <div className="text-2xl font-black">{totalQ}</div>
-                      <div className="text-white/60 text-xs">Pertanyaan</div>
+                  
+                  <div className="flex items-center gap-4 pl-12 sm:pl-0 shrink-0">
+                    <div className="text-right hidden sm:block mr-2">
+                      <div className="text-sm font-semibold">{totalQ}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Pertanyaan</div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openModal('objective', domain.id, domain.code); }}
-                        className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-white border border-white/20"
-                        title="Tambah Objective"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                      </button>
-                      {isOpen ? CHEVRON_DOWN : CHEVRON_RIGHT}
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); openModal('objective', domain.id, domain.code); }}
+                      className="h-8 text-xs"
+                    >
+                      <Plus className="h-3 w-3 sm:mr-2" />
+                      <span className="hidden sm:inline">Objective</span>
+                    </Button>
                   </div>
                 </div>
 
                 {/* Objectives */}
-                {isOpen && (
-                  <div className="divide-y divide-slate-100">
-                    {(domain.objectives || []).map(obj => {
-                      const objKey = `o-${obj.id}`;
-                      const isObjOpen = expanded[objKey];
-                      const objQ = (obj.practices || []).reduce((s, p) => s + (p.activities || []).length, 0);
+                <CollapsibleContent>
+                  <div className="border-t bg-card">
+                    {(domain.objectives || []).length === 0 ? (
+                      <div className="px-6 py-6 text-center text-sm text-muted-foreground">
+                        Belum ada Objective. Tambahkan Objective pertama untuk domain ini.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        {(domain.objectives || []).map((obj: any) => {
+                          const objKey = `o-${obj.id}`;
+                          const isObjOpen = expanded[objKey];
+                          const objQ = (obj.practices || []).reduce((s: number, p: any) => s + (p.activities || []).length, 0);
 
-                      return (
-                        <div key={obj.id}>
-                          {/* Objective Row */}
-                          <div
-                            className="flex items-center justify-between px-5 py-3 hover:bg-indigo-50/50 cursor-pointer group transition-colors"
-                            onClick={() => toggle(objKey)}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="ml-4 w-2 h-2 bg-indigo-400 rounded-full"></div>
-                              <span className="bg-indigo-100 text-indigo-700 font-bold text-xs px-2.5 py-1 rounded-lg">{obj.code}</span>
-                              <div>
-                                <span className="font-semibold text-slate-800 text-sm">{obj.name}</span>
-                                <span className="ml-2 text-xs text-slate-400">{objQ} pertanyaan</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); openModal('practice', obj.id, obj.code); }}
-                                className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                title="Tambah Practice"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                              </button>
-                              <span className="text-slate-400">{isObjOpen ? CHEVRON_DOWN : CHEVRON_RIGHT}</span>
-                            </div>
-                          </div>
-
-                          {/* Practices */}
-                          {isObjOpen && (
-                            <div className="bg-slate-50/60">
-                              {(obj.practices || []).map(prac => {
-                                const pracKey = `p-${prac.id}`;
-                                const isPracOpen = expanded[pracKey];
-
-                                return (
-                                  <div key={prac.id}>
-                                    {/* Practice Row */}
-                                    <div
-                                      className="flex items-center justify-between px-8 py-2.5 hover:bg-blue-50/50 cursor-pointer group transition-colors border-t border-slate-100"
-                                      onClick={() => toggle(pracKey)}
-                                    >
-                                      <div className="flex items-center space-x-3">
-                                        <div className="ml-4 w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                                        <span className="bg-blue-100 text-blue-700 font-bold text-xs px-2 py-0.5 rounded">{prac.code}</span>
-                                        <div>
-                                          <span className="font-medium text-slate-700 text-sm">{prac.name}</span>
-                                          <span className="ml-2 text-xs text-slate-400">{(prac.activities || []).length} aktivitas</span>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); openModal('activity', prac.id, prac.code); }}
-                                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                          title="Tambah Activity"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                        </button>
-                                        <span className="text-slate-400">{isPracOpen ? CHEVRON_DOWN : CHEVRON_RIGHT}</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Activities */}
-                                    {isPracOpen && (
-                                      <div className="bg-white border-t border-slate-100">
-                                        {(prac.activities || []).map((act, idx) => (
-                                          <div key={act.id} className="flex items-start px-12 py-2.5 border-b border-slate-50 last:border-0 hover:bg-emerald-50/40 transition-colors">
-                                            <span className="shrink-0 w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-xs mr-3 mt-0.5">
-                                              {idx + 1}
-                                            </span>
-                                            <p className="text-sm text-slate-600 leading-relaxed">{act.description}</p>
-                                          </div>
-                                        ))}
-                                        {(prac.activities || []).length === 0 && (
-                                          <div className="px-12 py-2 text-xs text-slate-400 italic">Belum ada aktivitas. Klik + untuk menambah.</div>
-                                        )}
-                                      </div>
-                                    )}
+                          return (
+                            <Collapsible 
+                              key={obj.id} 
+                              open={isObjOpen} 
+                              onOpenChange={() => toggle(objKey)}
+                              className="border-b last:border-b-0"
+                            >
+                              {/* Objective Row */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 pl-6 sm:pl-12 gap-3 hover:bg-muted/40 transition-colors bg-muted/10">
+                                <div className="flex items-center gap-3">
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="shrink-0 h-6 w-6 text-muted-foreground hover:text-foreground">
+                                      {isObjOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <Badge variant="secondary" className="font-mono text-xs">{obj.code}</Badge>
+                                  <div>
+                                    <span className="font-medium text-sm">{obj.name}</span>
+                                    <span className="ml-2 text-[11px] text-muted-foreground border-l pl-2">{objQ} Pertanyaan</span>
                                   </div>
-                                );
-                              })}
-                              {(obj.practices || []).length === 0 && (
-                                <div className="px-8 py-2 text-xs text-slate-400 italic">Belum ada practice.</div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {(domain.objectives || []).length === 0 && (
-                      <div className="px-5 py-3 text-sm text-slate-400 italic">Belum ada objective. Klik + di header domain untuk menambah.</div>
+                                </div>
+                                <div className="pl-10 sm:pl-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => { e.stopPropagation(); openModal('practice', obj.id, obj.code); }}
+                                    className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+                                  >
+                                    <Plus className="h-3 w-3 mr-1.5" />
+                                    Practice
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Practices */}
+                              <CollapsibleContent>
+                                <div className="border-t border-border/50 bg-background/50">
+                                  {(obj.practices || []).length === 0 ? (
+                                    <div className="px-16 py-4 text-xs text-muted-foreground">
+                                      Belum ada Practice.
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col">
+                                      {(obj.practices || []).map((prac: any) => {
+                                        const pracKey = `p-${prac.id}`;
+                                        const isPracOpen = expanded[pracKey];
+                                        const pracQ = (prac.activities || []).length;
+
+                                        return (
+                                          <Collapsible 
+                                            key={prac.id} 
+                                            open={isPracOpen} 
+                                            onOpenChange={() => toggle(pracKey)}
+                                            className="border-b border-border/50 last:border-b-0"
+                                          >
+                                            {/* Practice Row */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 pl-12 sm:pl-20 gap-2 hover:bg-muted/30 transition-colors">
+                                              <div className="flex items-center gap-3">
+                                                <CollapsibleTrigger asChild>
+                                                  <Button variant="ghost" size="icon" className="shrink-0 h-5 w-5 text-muted-foreground hover:text-foreground">
+                                                    {isPracOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                                  </Button>
+                                                </CollapsibleTrigger>
+                                                <Badge variant="outline" className="font-mono text-[10px] py-0">{prac.code}</Badge>
+                                                <div>
+                                                  <span className="font-medium text-[13px]">{prac.name}</span>
+                                                  <span className="ml-2 text-[10px] text-muted-foreground border-l pl-2">{pracQ} Aktivitas</span>
+                                                </div>
+                                              </div>
+                                              <div className="pl-10 sm:pl-0">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={(e) => { e.stopPropagation(); openModal('activity', prac.id, prac.code); }}
+                                                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-primary"
+                                                >
+                                                  <Plus className="h-3 w-3 mr-1" />
+                                                  Activity
+                                                </Button>
+                                              </div>
+                                            </div>
+
+                                            {/* Activities */}
+                                            <CollapsibleContent>
+                                              <div className="border-t border-border/30 bg-background">
+                                                {(prac.activities || []).length === 0 ? (
+                                                  <div className="px-20 py-3 text-[11px] text-muted-foreground italic">
+                                                    Belum ada aktivitas / pertanyaan.
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex flex-col py-1">
+                                                    {(prac.activities || []).map((act: any, idx: number) => (
+                                                      <div key={act.id} className="flex items-start px-16 sm:px-28 py-2 gap-3 hover:bg-muted/20 transition-colors">
+                                                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/50 text-[10px] font-medium text-muted-foreground mt-0.5 border">
+                                                          {idx + 1}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">{act.description}</p>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </CollapsibleContent>
+                                          </Collapsible>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </div>
       )}
 
-      {/* Modal */}
-      {modal.open && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">Tambah {typeLabels[modal.type]}</h2>
-                {modal.parentName && <p className="text-sm text-slate-500 mt-0.5">dalam: <span className="font-semibold text-indigo-600">{modal.parentName}</span></p>}
-              </div>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-50">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Code — only for domain/objective/practice */}
-              {modal.type !== 'activity' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Kode {typeLabels[modal.type]} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.code}
-                    onChange={e => setForm({ ...form, code: e.target.value })}
-                    placeholder={modal.type === 'domain' ? 'contoh: DSS' : modal.type === 'objective' ? 'contoh: DSS01' : 'contoh: DSS01.01'}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono uppercase"
-                  />
-                </div>
-              )}
-
-              {/* Name — only for domain/objective/practice */}
-              {modal.type !== 'activity' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Nama <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder={`Nama ${typeLabels[modal.type]}...`}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  {modal.type === 'activity' ? 'Teks Pertanyaan / Aktivitas' : 'Deskripsi'}
-                  {modal.type === 'activity' && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <textarea
-                  required={modal.type === 'activity'}
-                  rows={modal.type === 'activity' ? 4 : 2}
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  placeholder={
-                    modal.type === 'activity'
-                      ? 'Tuliskan pertanyaan atau aktivitas yang perlu dinilai oleh auditee...'
-                      : 'Deskripsi singkat (opsional)...'
-                  }
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+      {/* Dialog / Modal */}
+      <Dialog open={modal.open} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Tambah {typeLabels[modal.type]}</DialogTitle>
+            {modal.parentName && (
+              <DialogDescription>
+                Menambahkan ke dalam <span className="font-semibold text-foreground">{modal.parentName}</span>
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+            {/* Code */}
+            {modal.type !== 'activity' && (
+              <div className="space-y-2">
+                <Label htmlFor="code">
+                  Kode {typeLabels[modal.type]} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="code"
+                  required
+                  value={form.code}
+                  onChange={e => setForm({ ...form, code: e.target.value })}
+                  placeholder={modal.type === 'domain' ? 'contoh: DSS' : modal.type === 'objective' ? 'contoh: DSS01' : 'contoh: DSS01.01'}
+                  className="font-mono uppercase"
                 />
               </div>
+            )}
 
-              {/* Info box for activity */}
-              {modal.type === 'activity' && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-                  💡 Pertanyaan ini akan ditampilkan di kuesioner Auditee dengan pilihan jawaban: <strong>N / P / L / F</strong>
-                </div>
-              )}
-
-              <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={closeModal} className="px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-                  Batal
-                </button>
-                <button type="submit" disabled={submitting} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium disabled:opacity-50">
-                  {submitting ? 'Menyimpan...' : 'Simpan'}
-                </button>
+            {/* Name */}
+            {modal.type !== 'activity' && (
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Nama <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  required
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  placeholder={`Nama ${typeLabels[modal.type]}...`}
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="desc">
+                {modal.type === 'activity' ? 'Teks Pertanyaan / Aktivitas' : 'Deskripsi'}
+                {modal.type === 'activity' && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              <Textarea
+                id="desc"
+                required={modal.type === 'activity'}
+                rows={modal.type === 'activity' ? 4 : 2}
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                placeholder={
+                  modal.type === 'activity'
+                    ? 'Tuliskan pertanyaan atau aktivitas yang perlu dinilai oleh auditee...'
+                    : 'Deskripsi singkat (opsional)...'
+                }
+                className="resize-none"
+              />
+            </div>
+
+            {/* Info for activity */}
+            {modal.type === 'activity' && (
+              <div className="flex gap-2 rounded-lg bg-muted p-3 text-[11px] text-muted-foreground font-medium border">
+                <Info className="h-4 w-4 shrink-0" />
+                <p>Pertanyaan ini akan ditampilkan di kuesioner Auditee dengan pilihan jawaban N/P/L/F.</p>
+              </div>
+            )}
+
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={closeModal}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {submitting ? 'Menyimpan...' : 'Simpan'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
