@@ -1,0 +1,30 @@
+# =========================
+# Backend (Go)
+# =========================
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+tmp/
+
+# Go Modules
+vendor/
+
+# Environment Variables
+.env
+.env.*
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
