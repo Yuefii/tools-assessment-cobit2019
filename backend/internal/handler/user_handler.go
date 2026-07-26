@@ -105,3 +105,25 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"data": user})
 }
+
+func (h *UserHandler) UpdateMyPassword(c *fiber.Ctx) error {
+	userID := uint(c.Locals("user_id").(float64))
+	
+	var input struct {
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	
+	if len(input.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Password baru minimal 6 karakter"})
+	}
+
+	if err := h.userService.UpdatePassword(userID, input.OldPassword, input.NewPassword); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	
+	return c.JSON(fiber.Map{"message": "Password berhasil diperbarui"})
+}

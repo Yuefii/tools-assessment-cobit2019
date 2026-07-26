@@ -13,6 +13,7 @@ type UserService interface {
 	GetUserByID(id uint) (*UserResponse, error)
 	CreateUser(input RegisterInput) (*model.User, error)
 	UpdateUser(id uint, input UpdateUserInput) (*UserResponse, error)
+	UpdatePassword(id uint, oldPassword, newPassword string) error
 	DeleteUser(id uint) error
 }
 
@@ -139,6 +140,26 @@ func (s *userService) UpdateUser(id uint, input UpdateUserInput) (*UserResponse,
 	}
 
 	return toUserResponse(user), nil
+}
+
+func (s *userService) UpdatePassword(id uint, oldPassword, newPassword string) error {
+	user, err := s.userRepo.GetUserByID(id)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword))
+	if err != nil {
+		return errors.New("password lama salah")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(hashedPassword)
+	return s.userRepo.UpdateUser(user)
 }
 
 func (s *userService) DeleteUser(id uint) error {

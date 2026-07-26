@@ -523,6 +523,7 @@ func main() {
 
 	// Current user info (any logged in user)
 	v1.Get("/me", middleware.Protected(), userHandler.GetMe)
+	v1.Put("/me/password", middleware.Protected(), userHandler.UpdateMyPassword)
 
 	// Start server
 	port := os.Getenv("PORT")
