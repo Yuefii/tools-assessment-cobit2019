@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -20,7 +21,8 @@ export default function Navbar() {
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-30 shadow-sm">
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        <SidebarTrigger className="-ml-2" />
         <h2 className="font-semibold text-slate-700 text-sm hidden md:block">COBIT 2019 Assessment Tool</h2>
       </div>
       
