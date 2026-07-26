@@ -1,6 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { LogOut, ChevronDown } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -11,46 +22,47 @@ export default function Navbar() {
     navigate('/login');
   };
 
-  const roleColors = {
-    Admin: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-    Assessor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    Auditee: 'bg-amber-100 text-amber-700 border-amber-200',
-  };
-
-  const roleBadge = user?.role?.name ? roleColors[user.role.name] || 'bg-slate-100 text-slate-700' : '';
+  const initials = user?.name?.substring(0, 2).toUpperCase() || 'U';
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-30 shadow-sm">
+    <header className="h-16 bg-background border-b flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 shadow-sm">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-2" />
-        <h2 className="font-semibold text-slate-700 text-sm hidden md:block">COBIT 2019 Assessment Tool</h2>
+        <h2 className="font-semibold text-foreground text-sm hidden md:block">COBIT 2019 Assessment Tool</h2>
       </div>
       
-      <div className="flex items-center space-x-4">
-        {user && (
-          <span id="user-role-badge" className={`hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${roleBadge}`}>
-            {user.role?.name}
-          </span>
-        )}
-        <div id="user-profile" className="flex items-center space-x-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-slate-800">{user?.name || 'Loading...'}</p>
-            <p className="text-xs text-slate-500">{user?.email || ''}</p>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-            {user?.name?.substring(0, 2).toUpperCase() || '?'}
-          </div>
-        </div>
-        <button
-          id="logout-btn"
-          onClick={handleLogout}
-          className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
-          title="Logout"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-        </button>
+      <div className="flex items-center gap-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-3 p-1.5 rounded-lg outline-none hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <Avatar className="h-9 w-9 rounded-md">
+              <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs rounded-md">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden md:flex flex-col items-start text-sm text-left">
+              <span className="font-medium text-foreground">{user?.name || 'User'}</span>
+              <span className="text-[11px] text-muted-foreground">{user?.role?.name || 'Guest'}</span>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+                  <p className="text-xs leading-none text-muted-foreground mt-1">
+                    {user?.email || ''}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
