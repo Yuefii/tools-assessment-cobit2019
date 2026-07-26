@@ -5,23 +5,27 @@ import {
   ResponsiveContainer, Tooltip, Legend,
 } from 'recharts';
 import { reportAPI } from '../services/api';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Loader2, ArrowLeft, Printer, AlertTriangle } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 /* ── helpers ─────────────────────────────────────────── */
-const levelName = (lvl) => {
+const levelName = (lvl: number) => {
   const names = ['Incomplete', 'Initial', 'Managed', 'Defined', 'Quantitatively Managed', 'Optimizing'];
   return names[Math.floor(lvl)] ?? 'Unknown';
 };
 
-const levelColor = (lvl) => {
-  if (lvl < 1) return { bg: '#fef2f2', border: '#fecaca', text: '#b91c1c', bar: '#ef4444' };
-  if (lvl < 2) return { bg: '#fff7ed', border: '#fed7aa', text: '#c2410c', bar: '#f97316' };
-  if (lvl < 3) return { bg: '#fefce8', border: '#fde68a', text: '#92400e', bar: '#eab308' };
-  if (lvl < 4) return { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d', bar: '#22c55e' };
-  if (lvl < 5) return { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', bar: '#3b82f6' };
-  return { bg: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9', bar: '#8b5cf6' };
+const levelColor = (lvl: number) => {
+  if (lvl < 1) return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', bar: '#ef4444' };
+  if (lvl < 2) return { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', bar: '#f97316' };
+  if (lvl < 3) return { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', bar: '#eab308' };
+  if (lvl < 4) return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', bar: '#22c55e' };
+  if (lvl < 5) return { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', bar: '#3b82f6' };
+  return { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', bar: '#8b5cf6' };
 };
 
-const domainInfo = {
+const domainInfo: Record<string, any> = {
   EDM: { name: 'Evaluate, Direct and Monitor', color: '#6366f1', desc: 'Memastikan tata kelola TI berjalan efektif untuk mendukung tujuan bisnis.' },
   APO: { name: 'Align, Plan and Organise', color: '#0ea5e9', desc: 'Mengelola strategi TI dan mengorganisasikan sumber daya secara optimal.' },
   BAI: { name: 'Build, Acquire and Implement', color: '#10b981', desc: 'Memastikan solusi TI dibangun, diperoleh, dan diimplementasikan dengan tepat.' },
@@ -29,7 +33,7 @@ const domainInfo = {
   MEA: { name: 'Monitor, Evaluate and Assess', color: '#ef4444', desc: 'Memantau kinerja dan kesesuaian TI dengan tujuan strategis.' },
 };
 
-const gapRecommendation = (gap, targetLevel) => {
+const gapRecommendation = (gap: number, targetLevel: number) => {
   if (gap === 0) return 'Level target sudah tercapai. Fokus pada pemeliharaan dan optimisasi berkelanjutan.';
   if (gap <= 0.5) return 'Sangat dekat dengan target. Standarisasi dan dokumentasikan proses yang sudah berjalan.';
   if (gap <= 1) return `Diperlukan peningkatan sedang. Formalisasikan proses menuju Level ${targetLevel} melalui SOP tertulis dan tunjuk Process Owner.`;
@@ -37,9 +41,8 @@ const gapRecommendation = (gap, targetLevel) => {
   return 'Diperlukan peningkatan mendasar. Rekomendasikan keterlibatan konsultan tata kelola TI bersertifikat.';
 };
 
-/* ── Group objectives by domain prefix ────────────────── */
-const groupByDomain = (objectives) => {
-  const map = {};
+const groupByDomain = (objectives: any[]) => {
+  const map: Record<string, any[]> = {};
   objectives.forEach(o => {
     const prefix = o.code?.slice(0, 3).toUpperCase() || 'UNK';
     if (!map[prefix]) map[prefix] = [];
@@ -48,23 +51,18 @@ const groupByDomain = (objectives) => {
   return map;
 };
 
-/* ── Print styles ────────────────────────────────────── */
 const PRINT_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   @page { size: A4 portrait; margin: 18mm 18mm 18mm 22mm; }
   @media print {
-    body { font-family: 'Inter', sans-serif !important; }
     .print-hide { display: none !important; }
-    .page-break { break-before: page; }
+    .page-break { break-before: page; margin-top: 0 !important; padding-top: 0 !important; border-top: none !important; }
     .no-break { break-inside: avoid; }
-  }
-  @media screen {
-    .page-break { border-top: 2px dashed #e2e8f0; margin-top: 32px; padding-top: 32px; }
+    body { background-color: white !important; }
+    .print-container { box-shadow: none !important; border: none !important; max-width: 100% !important; margin: 0 !important; }
   }
 `;
 
-/* ── Mini Spider Chart per Domain ──────────────────────── */
-function DomainSpiderChart({ objectives, targetLevel, color }) {
+function DomainSpiderChart({ objectives, targetLevel, color }: { objectives: any[], targetLevel: number, color: string }) {
   if (!objectives || objectives.length === 0) return null;
   const data = objectives.map(o => ({
     subject: o.code,
@@ -78,9 +76,7 @@ function DomainSpiderChart({ objectives, targetLevel, color }) {
         <PolarGrid stroke="#cbd5e1" strokeDasharray="3 3" />
         <PolarAngleAxis dataKey="subject" tick={{ fill: '#1e293b', fontSize: 9, fontWeight: 600 }} />
         <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: '#94a3b8', fontSize: 8 }} />
-        <Tooltip
-          contentStyle={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
-        />
+        <Tooltip contentStyle={{ fontSize: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }} />
         <Radar name="Target (To-Be)" dataKey="To-Be" stroke="#94a3b8" fill="#e2e8f0" fillOpacity={0.25} strokeDasharray="5 3" strokeWidth={1.5} />
         <Radar name="As-Is" dataKey="As-Is" stroke={color} fill={color} fillOpacity={0.4} strokeWidth={2} />
       </RadarChart>
@@ -88,36 +84,28 @@ function DomainSpiderChart({ objectives, targetLevel, color }) {
   );
 }
 
-/* ── Level Badge ─────────────────────────────────────── */
-function LevelBadge({ level }) {
+function LevelBadge({ level }: { level: number }) {
   const c = levelColor(level);
   return (
-    <span style={{
-      display: 'inline-block', padding: '2px 8px', fontSize: '8pt', fontWeight: 700,
-      background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: '4px',
-    }}>
+    <span className={cn("inline-block px-2 py-0.5 text-[8pt] font-bold border rounded", c.bg, c.text, c.border)}>
       {levelName(level)}
     </span>
   );
 }
 
-/* ── Progress Bar ──────────────────────────────────── */
-function ProgressBar({ value, max = 5, color = '#1e3a5f' }) {
+function ProgressBar({ value, max = 5, color = '#1e3a5f' }: { value: number, max?: number, color?: string }) {
   const pct = Math.min(100, (value / max) * 100);
   return (
-    <div style={{ height: '5px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden', marginTop: '4px' }}>
-      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '3px', transition: 'width 0.3s' }} />
+    <div className="h-[5px] bg-slate-200 rounded-[3px] overflow-hidden mt-1">
+      <div className="h-full rounded-[3px] transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: color }} />
     </div>
   );
 }
 
-/* ══════════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════════ */
 export default function Report() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -128,43 +116,35 @@ export default function Report() {
       s.textContent = PRINT_STYLES;
       document.head.appendChild(s);
     }
-    reportAPI.generate(id)
+    reportAPI.generate(id!)
       .then(res => setReport(res.data || res))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
 
-  /* ── Loading ───────────────────────────────────── */
   if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px', gap: '16px' }}>
-      <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '4px solid #1e3a5f', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-      <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>Memuat laporan…</p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div className="flex flex-col items-center justify-center py-24 gap-4">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">Memuat laporan…</p>
     </div>
   );
 
-  /* ── Error ────────────────────────────────────── */
   if (error) return (
-    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px', padding: '48px 32px', textAlign: 'center', maxWidth: '480px', margin: '60px auto' }}>
-      <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-      <h3 style={{ fontWeight: 700, color: '#b91c1c', fontSize: '18px', marginBottom: '8px' }}>Laporan Belum Tersedia</h3>
-      <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '24px' }}>{error}</p>
-      <button
-        onClick={() => navigate(`/dashboard/assessments/${id}/fill`)}
-        style={{ background: '#1e3a5f', color: 'white', padding: '10px 24px', borderRadius: '10px', fontWeight: 600, border: 'none', cursor: 'pointer', fontSize: '14px' }}
-      >
+    <div className="max-w-md mx-auto mt-16 p-8 bg-destructive/10 border border-destructive/20 rounded-2xl text-center">
+      <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+      <h3 className="font-bold text-lg text-destructive mb-2">Laporan Belum Tersedia</h3>
+      <p className="text-sm text-destructive/80 mb-6">{error}</p>
+      <Button onClick={() => navigate(`/dashboard/assessments/${id}/fill`)}>
         Isi Kuesioner Terlebih Dahulu
-      </button>
+      </Button>
     </div>
   );
 
-  /* ── Data Preparation ────────────────────────── */
   const objectives = report.objectives || [];
   const domainGroups = groupByDomain(objectives);
   const domainKeys = Object.keys(domainGroups);
 
-  // Full chart data (all objectives combined)
-  const fullChartData = objectives.map(o => ({
+  const fullChartData = objectives.map((o: any) => ({
     subject: o.code,
     'As-Is': parseFloat(o.level.toFixed(2)),
     'To-Be': report.target_level,
@@ -173,65 +153,48 @@ export default function Report() {
 
   const printDate = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  /* shared styles */
-  const cell = { padding: '9px 14px', fontSize: '9.5pt', border: '1px solid #cbd5e1', verticalAlign: 'middle' };
-  const th = { ...cell, background: '#1e3a5f', color: '#fff', fontWeight: 700 };
-
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto 80px', fontFamily: "'Inter', sans-serif" }}>
-
-      {/* ── Toolbar ──────────────────────────────────── */}
-      <div className="print-hide" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <button
-            onClick={() => navigate('/dashboard/assessments')}
-            style={{ padding: '8px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', cursor: 'pointer' }}
-          >
-            <svg width="20" height="20" fill="none" stroke="#475569" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-          </button>
+    <div className="w-full pb-20">
+      {/* ── Toolbar ── */}
+      <div className="print-hide flex justify-between items-center mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate('/dashboard/assessments')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Laporan Penilaian COBIT 2019</h1>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Pratinjau · Siap cetak</p>
+            <h1 className="text-xl font-bold text-foreground m-0">Laporan Penilaian COBIT 2019</h1>
+            <p className="text-xs text-muted-foreground m-0">Pratinjau · Siap cetak</p>
           </div>
         </div>
-        <button
-          onClick={() => window.print()}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            background: '#1e3a5f', color: 'white',
-            padding: '9px 18px', borderRadius: '10px', border: 'none',
-            fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-          }}
-        >
-          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
+        <Button size="lg" className="px-6 h-11 text-sm sm:text-base font-semibold" onClick={() => window.print()}>
+          <Printer className="h-5 w-5 mr-2" />
           Cetak / Ekspor PDF
-        </button>
+        </Button>
       </div>
 
-      {/* ════════════════════════════════════════════
-          DOKUMEN
-      ════════════════════════════════════════════ */}
-      <div style={{ background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
-
-        {/* ══ COVER ══════════════════════════════════ */}
-        <div style={{ padding: '48px 64px 40px', borderBottom: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '3px solid #1e3a5f', paddingBottom: '14px', marginBottom: '32px' }}>
+      {/* ── Document ── */}
+      <Card className="print-container bg-white text-slate-900 border-slate-200 overflow-hidden shadow-lg rounded-none sm:rounded-xl">
+        {/* Cover */}
+        <div className="p-8 sm:p-12 md:p-16 border-b border-slate-200">
+          <div className="flex justify-between items-end border-b-[3px] border-slate-800 pb-4 mb-8">
             <div>
-              <div style={{ fontSize: '8pt', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#64748b', marginBottom: '2px' }}>Laporan Penilaian Tingkat Kapabilitas</div>
-              <div style={{ fontSize: '17pt', fontWeight: 800, color: '#0f172a' }}>Tata Kelola Teknologi Informasi</div>
-              <div style={{ fontSize: '11pt', color: '#1e3a5f', marginTop: '2px' }}>Berdasarkan Kerangka Kerja <strong>COBIT 2019</strong></div>
+              <div className="text-[8pt] font-bold tracking-[0.15em] uppercase text-slate-500 mb-1">
+                Laporan Penilaian Tingkat Kapabilitas
+              </div>
+              <div className="text-[17pt] sm:text-[22pt] font-extrabold text-slate-900 leading-tight">
+                Tata Kelola Teknologi Informasi
+              </div>
+              <div className="text-[11pt] text-slate-700 mt-1">
+                Berdasarkan Kerangka Kerja <strong className="text-slate-900">COBIT 2019</strong>
+              </div>
             </div>
-            <div style={{ textAlign: 'right', fontSize: '8.5pt', color: '#94a3b8', lineHeight: 1.7 }}>
+            <div className="text-right text-[8.5pt] text-slate-500 leading-relaxed hidden sm:block">
               <div>No. Dok: COBIT-{String(report.assessment_id).padStart(4, '0')}</div>
               <div>{printDate}</div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '9.5pt' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[9.5pt]">
             {[
               ['Judul Assessment', report.title],
               ['Domain / Ruang Lingkup', report.domain_code || '—'],
@@ -240,62 +203,62 @@ export default function Report() {
               ['Tanggal Pelaksanaan', report.created_at],
               ['Target Capability Level', `Level ${report.target_level} — ${levelName(report.target_level)}`],
             ].map(([label, val], i) => (
-              <div key={i} style={{ display: 'flex', gap: '0', border: '1px solid #e2e8f0' }}>
-                <div style={{ padding: '7px 12px', background: '#f8fafc', fontWeight: 600, color: '#475569', minWidth: '160px', borderRight: '1px solid #e2e8f0' }}>{label}</div>
-                <div style={{ padding: '7px 12px', color: '#1e293b' }}>{val}</div>
+              <div key={i} className="flex border border-slate-200">
+                <div className="p-2 sm:px-3 bg-slate-50 font-semibold text-slate-600 w-32 sm:w-40 border-r border-slate-200 shrink-0">
+                  {label}
+                </div>
+                <div className="p-2 sm:px-3 text-slate-900">{val}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ══ 1. RINGKASAN HASIL ══════════════════════ */}
-        <div style={{ padding: '40px 64px', borderBottom: '1px solid #e2e8f0' }}>
-          <h2 style={{ fontSize: '12pt', fontWeight: 800, color: '#0f172a', borderLeft: '4px solid #1e3a5f', paddingLeft: '12px', margin: '0 0 20px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {/* 1. Ringkasan Hasil */}
+        <div className="p-8 sm:p-12 md:px-16 md:py-10 border-b border-slate-200">
+          <h2 className="text-[12pt] font-extrabold text-slate-900 border-l-4 border-slate-800 pl-3 mb-6 uppercase tracking-wider">
             1. Ringkasan Hasil Penilaian
           </h2>
 
-          {/* 3 score cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '24px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Tingkat Saat Ini (As-Is)', val: report.current_level?.toFixed(2), sub: levelName(report.current_level), accent: '#2563eb' },
-              { label: 'Tingkat Target (To-Be)', val: report.target_level, sub: levelName(report.target_level), accent: '#1e3a5f' },
+              { label: 'Tingkat Saat Ini (As-Is)', val: report.current_level?.toFixed(2), sub: levelName(report.current_level), accent: 'border-blue-600', text: 'text-blue-600' },
+              { label: 'Tingkat Target (To-Be)', val: report.target_level, sub: levelName(report.target_level), accent: 'border-slate-800', text: 'text-slate-800' },
               {
                 label: 'Celah Kapabilitas (Gap)',
                 val: report.gap?.toFixed(2),
                 sub: report.gap > 0 ? 'Perlu Peningkatan' : 'Target Tercapai',
-                accent: report.gap > 0 ? '#dc2626' : '#16a34a',
+                accent: report.gap > 0 ? 'border-red-600' : 'border-green-600',
+                text: report.gap > 0 ? 'text-red-600' : 'text-green-600'
               },
             ].map((c, i) => (
-              <div key={i} className="no-break" style={{ border: `2px solid ${c.accent}`, padding: '16px 18px' }}>
-                <div style={{ fontSize: '8pt', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{c.label}</div>
-                <div style={{ fontSize: '26pt', fontWeight: 800, color: c.accent, lineHeight: 1 }}>{c.val}</div>
-                <div style={{ fontSize: '9.5pt', fontWeight: 600, color: '#334155', marginTop: '4px' }}>{c.sub}</div>
+              <div key={i} className={cn("no-break border-2 p-4 sm:p-5", c.accent)}>
+                <div className="text-[7pt] sm:text-[8pt] font-bold text-slate-500 uppercase tracking-widest mb-2">{c.label}</div>
+                <div className={cn("text-[22pt] sm:text-[26pt] font-extrabold leading-none", c.text)}>{c.val}</div>
+                <div className="text-[9pt] font-semibold text-slate-700 mt-1">{c.sub}</div>
               </div>
             ))}
           </div>
 
-          {/* Skala referensi */}
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '14px 18px' }}>
-            <div style={{ fontSize: '8pt', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Referensi Capability Level COBIT 2019</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
+          <div className="bg-slate-50 border border-slate-200 p-4 sm:p-5 hidden sm:block">
+            <div className="text-[8pt] font-bold text-slate-500 uppercase tracking-widest mb-3">Referensi Capability Level COBIT 2019</div>
+            <div className="grid grid-cols-6 gap-1.5">
               {[
-                { lvl: 0, name: 'Incomplete', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' },
-                { lvl: 1, name: 'Initial', bg: '#fff7ed', border: '#fed7aa', text: '#c2410c' },
-                { lvl: 2, name: 'Managed', bg: '#fefce8', border: '#fde68a', text: '#92400e' },
-                { lvl: 3, name: 'Defined', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
-                { lvl: 4, name: 'Quant. Managed', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
-                { lvl: 5, name: 'Optimizing', bg: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9' },
+                { lvl: 0, name: 'Incomplete', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+                { lvl: 1, name: 'Initial', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
+                { lvl: 2, name: 'Managed', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+                { lvl: 3, name: 'Defined', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
+                { lvl: 4, name: 'Quant. Managed', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
+                { lvl: 5, name: 'Optimizing', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
               ].map(l => (
-                <div key={l.lvl} style={{ background: l.bg, border: `1px solid ${l.border}`, padding: '6px 8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '14pt', fontWeight: 800, color: l.text }}>{l.lvl}</div>
-                  <div style={{ fontSize: '7.5pt', fontWeight: 600, color: l.text, lineHeight: 1.3 }}>{l.name}</div>
+                <div key={l.lvl} className={cn("border p-1.5 sm:p-2 text-center", l.bg, l.border)}>
+                  <div className={cn("text-[12pt] sm:text-[14pt] font-extrabold", l.text)}>{l.lvl}</div>
+                  <div className={cn("text-[6pt] sm:text-[7pt] font-semibold leading-tight mt-0.5", l.text)}>{l.name}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Kesimpulan */}
-          <div style={{ marginTop: '18px', borderLeft: '4px solid #1e3a5f', padding: '12px 16px', background: '#f8fafc', fontSize: '9.5pt', color: '#334155', lineHeight: 1.7 }}>
+          <div className="mt-5 border-l-4 border-slate-800 p-3 sm:p-4 bg-slate-50 text-[9pt] sm:text-[9.5pt] text-slate-700 leading-relaxed">
             Domain <strong>{report.domain_code}</strong> saat ini berada pada <strong>Level {report.current_level?.toFixed(2)} — {levelName(report.current_level)}</strong>, dengan target <strong>Level {report.target_level} — {levelName(report.target_level)}</strong>.
             {report.gap > 0
               ? <> Terdapat celah sebesar <strong>{report.gap?.toFixed(2)} level</strong> yang perlu ditindaklanjuti melalui program perbaikan terencana.</>
@@ -304,31 +267,31 @@ export default function Report() {
           </div>
         </div>
 
-        {/* ══ 2. SPIDER CHART KESELURUHAN ════════════ */}
-        <div className="page-break" style={{ padding: '40px 64px', borderBottom: '1px solid #e2e8f0' }}>
-          <h2 style={{ fontSize: '12pt', fontWeight: 800, color: '#0f172a', borderLeft: '4px solid #1e3a5f', paddingLeft: '12px', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {/* 2. Spider Chart */}
+        <div className="page-break sm:mt-8 pt-8 sm:border-t-2 sm:border-dashed border-slate-200 p-8 sm:p-12 md:px-16 md:py-10 border-b border-slate-200">
+          <h2 className="text-[12pt] font-extrabold text-slate-900 border-l-4 border-slate-800 pl-3 mb-2 uppercase tracking-wider">
             2. Peta Spider Chart Keseluruhan (As-Is vs. To-Be)
           </h2>
-          <p style={{ fontSize: '9.5pt', color: '#64748b', marginBottom: '16px', lineHeight: 1.6 }}>
+          <p className="text-[9.5pt] text-slate-500 mb-5 leading-relaxed">
             Visualisasi spider chart menampilkan seluruh objective yang dinilai. Area biru = kondisi aktual (As-Is). Garis putus-putus = target kapabilitas (To-Be).
           </p>
 
-          <div style={{ border: '1px solid #e2e8f0', background: '#fafafa', padding: '20px' }} className="no-break">
-            <div style={{ height: '380px' }}>
+          <div className="no-break border border-slate-200 bg-slate-50/50 p-5">
+            <div className="h-[300px] sm:h-[380px]">
               {fullChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="75%" data={fullChartData}>
                     <PolarGrid stroke="#cbd5e1" strokeDasharray="3 3" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 600 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: '#94a3b8', fontSize: 9 }} />
-                    <Tooltip contentStyle={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                    <Legend wrapperStyle={{ paddingTop: '12px', fontFamily: 'Inter, sans-serif', fontSize: '11px' }} />
+                    <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                    <Legend wrapperStyle={{ paddingTop: '12px', fontSize: '11px' }} />
                     <Radar name="Target (To-Be)" dataKey="To-Be" stroke="#94a3b8" fill="#e2e8f0" fillOpacity={0.3} strokeDasharray="6 4" strokeWidth={2} />
                     <Radar name="Current (As-Is)" dataKey="As-Is" stroke="#1e3a5f" fill="#3b82f6" fillOpacity={0.5} strokeWidth={2} />
                   </RadarChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '9.5pt' }}>
+                <div className="h-full flex items-center justify-center text-slate-400 text-[9.5pt]">
                   Data tidak mencukupi untuk merender grafik
                 </div>
               )}
@@ -336,86 +299,77 @@ export default function Report() {
           </div>
         </div>
 
-        {/* ══ 3. GAMBARAN BESAR PER DOMAIN ════════════ */}
-        <div className="page-break" style={{ padding: '40px 64px', borderBottom: '1px solid #e2e8f0' }}>
-          <h2 style={{ fontSize: '12pt', fontWeight: 800, color: '#0f172a', borderLeft: '4px solid #1e3a5f', paddingLeft: '12px', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {/* 3. Per Domain */}
+        <div className="page-break sm:mt-8 pt-8 sm:border-t-2 sm:border-dashed border-slate-200 p-8 sm:p-12 md:px-16 md:py-10 border-b border-slate-200">
+          <h2 className="text-[12pt] font-extrabold text-slate-900 border-l-4 border-slate-800 pl-3 mb-2 uppercase tracking-wider">
             3. Gambaran Besar per Domain
           </h2>
-          <p style={{ fontSize: '9.5pt', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
-            Setiap domain COBIT 2019 ditampilkan dengan spider chart dan ringkasan kapabilitas per objective. Ini memberikan gambaran cepat tentang kekuatan dan celah di setiap domain.
+          <p className="text-[9.5pt] text-slate-500 mb-6 leading-relaxed">
+            Setiap domain COBIT 2019 ditampilkan dengan ringkasan kapabilitas per objective untuk analisis area kekuatan dan kelemahan.
           </p>
 
           {domainKeys.map(domainKey => {
             const domObjs = domainGroups[domainKey];
             const info = domainInfo[domainKey] || { name: domainKey, color: '#64748b', desc: '' };
             const avgLevel = domObjs.reduce((s, o) => s + o.level, 0) / domObjs.length;
-            const avgScore = domObjs.reduce((s, o) => s + o.score_value, 0) / domObjs.length;
             const domGap = Math.max(0, report.target_level - avgLevel);
-            const lc = levelColor(avgLevel);
 
             return (
-              <div key={domainKey} className="no-break" style={{
-                marginBottom: '28px',
-                border: `1px solid ${info.color}30`,
-                borderRadius: '4px',
-                overflow: 'hidden',
-              }}>
-                {/* Domain Header */}
-                <div style={{ background: `${info.color}12`, borderBottom: `1px solid ${info.color}30`, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={domainKey} className="no-break mb-8 border border-slate-200 rounded-lg overflow-hidden">
+                {/* Header Domain */}
+                <div className="p-4 sm:p-5 flex justify-between items-center bg-slate-50 border-b border-slate-200">
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: info.color }} />
-                      <span style={{ fontSize: '11pt', fontWeight: 800, color: '#0f172a' }}>{domainKey}</span>
-                      <span style={{ fontSize: '9pt', fontWeight: 600, color: '#475569' }}>— {info.name}</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: info.color }} />
+                      <span className="text-[11pt] font-extrabold text-slate-900">{domainKey}</span>
+                      <span className="text-[9pt] font-semibold text-slate-600 hidden sm:inline">— {info.name}</span>
                     </div>
-                    <p style={{ margin: '4px 0 0 20px', fontSize: '8.5pt', color: '#64748b' }}>{info.desc}</p>
+                    <p className="mt-1 ml-5 text-[8.5pt] text-slate-500 hidden sm:block">{info.desc}</p>
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '16px' }}>
-                    <div style={{ fontSize: '20pt', fontWeight: 800, color: info.color, lineHeight: 1 }}>{avgLevel.toFixed(2)}</div>
-                    <div style={{ fontSize: '8pt', color: '#64748b', fontWeight: 600 }}>Rata-rata Level</div>
+                  <div className="text-right shrink-0 ml-4">
+                    <div className="text-[16pt] sm:text-[20pt] font-extrabold leading-none" style={{ color: info.color }}>{avgLevel.toFixed(2)}</div>
+                    <div className="text-[7pt] sm:text-[8pt] text-slate-500 font-semibold mt-1">Rata-rata Level</div>
                     {domGap > 0 ? (
-                      <div style={{ fontSize: '8pt', color: '#dc2626', fontWeight: 700, marginTop: '2px' }}>Gap: +{domGap.toFixed(2)}</div>
+                      <div className="text-[7pt] sm:text-[8pt] text-red-600 font-bold mt-0.5">Gap: +{domGap.toFixed(2)}</div>
                     ) : (
-                      <div style={{ fontSize: '8pt', color: '#16a34a', fontWeight: 700, marginTop: '2px' }}>✓ Target Tercapai</div>
+                      <div className="text-[7pt] sm:text-[8pt] text-green-600 font-bold mt-0.5">✓ Target Tercapai</div>
                     )}
                   </div>
                 </div>
 
-                {/* Domain Body: Chart + Objectives List */}
-                <div style={{ display: 'grid', gridTemplateColumns: domObjs.length > 1 ? '1fr 1fr' : '1fr', gap: '0' }}>
-                  {/* Spider Chart */}
+                {/* Body Domain */}
+                <div className="grid grid-cols-1 md:grid-cols-2">
                   {domObjs.length > 1 && (
-                    <div style={{ padding: '16px', borderRight: '1px solid #e2e8f0', background: '#fafafa' }}>
-                      <div style={{ fontSize: '8pt', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Spider Chart Domain {domainKey}</div>
+                    <div className="p-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50">
+                      <div className="text-[7.5pt] font-bold text-slate-500 uppercase tracking-widest mb-2">Spider Chart {domainKey}</div>
                       <DomainSpiderChart objectives={domObjs} targetLevel={report.target_level} color={info.color} />
                     </div>
                   )}
-
-                  {/* Objectives Summary */}
-                  <div style={{ padding: '16px' }}>
-                    <div style={{ fontSize: '8pt', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>
+                  
+                  <div className={cn("p-4 sm:p-5", domObjs.length === 1 ? "md:col-span-2" : "")}>
+                    <div className="text-[7.5pt] font-bold text-slate-500 uppercase tracking-widest mb-3">
                       Ringkasan Objective ({domObjs.length})
                     </div>
-                    {domObjs.map((o, idx) => {
+                    {domObjs.map((o: any, idx: number) => {
                       const oGap = Math.max(0, report.target_level - o.level);
                       const olc = levelColor(o.level);
                       return (
-                        <div key={idx} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: idx < domObjs.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                        <div key={idx} className={cn("pb-3 mb-3", idx < domObjs.length - 1 ? "border-b border-slate-100" : "")}>
+                          <div className="flex justify-between items-start mb-1">
                             <div>
-                              <span style={{ fontWeight: 700, fontSize: '9pt', color: '#0f172a' }}>{o.code}</span>
-                              <span style={{ fontSize: '8.5pt', color: '#475569', marginLeft: '6px' }}>{o.name}</span>
+                              <span className="font-bold text-[9pt] text-slate-900">{o.code}</span>
+                              <span className="text-[8.5pt] text-slate-600 ml-1.5">{o.name}</span>
                             </div>
-                            <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
-                              <span style={{ fontWeight: 800, fontSize: '10pt', color: olc.text }}>{o.level.toFixed(2)}</span>
+                            <div className="text-right shrink-0 ml-2">
+                              <span className={cn("font-extrabold text-[10pt]", olc.text)}>{o.level.toFixed(2)}</span>
                               {oGap > 0
-                                ? <span style={{ fontSize: '7.5pt', color: '#dc2626', fontWeight: 600, marginLeft: '4px' }}>▲{oGap.toFixed(2)}</span>
-                                : <span style={{ fontSize: '7.5pt', color: '#16a34a', fontWeight: 600, marginLeft: '4px' }}>✓</span>
+                                ? <span className="text-[7.5pt] text-red-600 font-semibold ml-1">▲{oGap.toFixed(2)}</span>
+                                : <span className="text-[7.5pt] text-green-600 font-semibold ml-1">✓</span>
                               }
                             </div>
                           </div>
                           <ProgressBar value={o.level} max={5} color={olc.bar} />
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px', fontSize: '7.5pt', color: '#94a3b8' }}>
+                          <div className="flex justify-between mt-1.5 text-[7.5pt] text-slate-500">
                             <span>Skor: {o.score_value?.toFixed(1)}%</span>
                             <LevelBadge level={o.level} />
                           </div>
@@ -429,253 +383,169 @@ export default function Report() {
           })}
         </div>
 
-        {/* ══ 4. PENILAIAN DETAIL PER OBJECTIVE ══════════ */}
-        <div className="page-break" style={{ padding: '40px 64px', borderBottom: '1px solid #e2e8f0' }}>
-          <h2 style={{ fontSize: '12pt', fontWeight: 800, color: '#0f172a', borderLeft: '4px solid #1e3a5f', paddingLeft: '12px', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {/* 4. Tabel Detail */}
+        <div className="page-break sm:mt-8 pt-8 sm:border-t-2 sm:border-dashed border-slate-200 p-8 sm:p-12 md:px-16 md:py-10 border-b border-slate-200">
+          <h2 className="text-[12pt] font-extrabold text-slate-900 border-l-4 border-slate-800 pl-3 mb-2 uppercase tracking-wider">
             4. Penilaian Detail per Objective
           </h2>
-          <p style={{ fontSize: '9.5pt', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
-            Tabel berikut menampilkan penilaian lengkap untuk setiap governance/management objective, mencakup skor aktual, tingkat kapabilitas, target, dan celah yang perlu diatasi.
+          <p className="text-[9.5pt] text-slate-500 mb-6 leading-relaxed">
+            Tabel berikut menampilkan penilaian lengkap untuk setiap objective, mencakup tingkat kapabilitas, target, dan celah yang perlu diatasi.
           </p>
 
-          {domainKeys.map(domainKey => {
-            const domObjs = domainGroups[domainKey];
-            const info = domainInfo[domainKey] || { name: domainKey, color: '#64748b', desc: '' };
-            const avgLevel = domObjs.reduce((s, o) => s + o.level, 0) / domObjs.length;
-            const avgScore = domObjs.reduce((s, o) => s + o.score_value, 0) / domObjs.length;
+          <div className="overflow-x-auto">
+            {domainKeys.map(domainKey => {
+              const domObjs = domainGroups[domainKey];
+              const info = domainInfo[domainKey] || { name: domainKey, color: '#64748b' };
+              const avgLevel = domObjs.reduce((s, o) => s + o.level, 0) / domObjs.length;
+              const avgScore = domObjs.reduce((s, o) => s + o.score_value, 0) / domObjs.length;
 
-            return (
-              <div key={domainKey} style={{ marginBottom: '24px' }} className="no-break">
-                {/* Domain sub-header */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  background: info.color, color: 'white',
-                  padding: '8px 16px', marginBottom: '0',
-                }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white', opacity: 0.8 }} />
-                  <span style={{ fontWeight: 800, fontSize: '9.5pt' }}>{domainKey}</span>
-                  <span style={{ fontWeight: 500, fontSize: '9pt', opacity: 0.9 }}>— {info.name}</span>
-                  <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '9pt', opacity: 0.9 }}>
-                    Rata-rata Level: {avgLevel.toFixed(2)} · Skor: {avgScore.toFixed(1)}%
-                  </span>
+              return (
+                <div key={domainKey} className="no-break mb-6 min-w-[600px]">
+                  <div className="flex items-center gap-2.5 text-white p-2.5 px-4" style={{ backgroundColor: info.color }}>
+                    <div className="w-2 h-2 rounded-full bg-white/80" />
+                    <span className="font-extrabold text-[9.5pt]">{domainKey}</span>
+                    <span className="font-medium text-[9pt] opacity-90 hidden sm:inline">— {info.name}</span>
+                    <span className="ml-auto font-bold text-[9pt] opacity-90">
+                      Rata-rata: {avgLevel.toFixed(2)} · Skor: {avgScore.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[10%]" style={{ backgroundColor: `${info.color}dd` }}>Kode</th>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[30%]" style={{ backgroundColor: `${info.color}dd` }}>Objective</th>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[14%] text-center" style={{ backgroundColor: `${info.color}dd` }}>Skor (%)</th>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[15%] text-center" style={{ backgroundColor: `${info.color}dd` }}>Level As-Is</th>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[11%] text-center" style={{ backgroundColor: `${info.color}dd` }}>Target</th>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[10%] text-center" style={{ backgroundColor: `${info.color}dd` }}>Gap</th>
+                        <th className="p-2.5 text-[9pt] border border-slate-300 font-bold text-white w-[10%] text-center" style={{ backgroundColor: `${info.color}dd` }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {domObjs.map((o: any, i: number) => {
+                        const gap = Math.max(0, report.target_level - o.level);
+                        const hasGap = gap > 0;
+                        const olc = levelColor(o.level);
+                        return (
+                          <tr key={i} className={i % 2 === 0 ? "bg-slate-50" : "bg-white"}>
+                            <td className="p-2.5 text-[9pt] border border-slate-300 font-bold" style={{ color: info.color }}>{o.code}</td>
+                            <td className="p-2.5 text-[9pt] border border-slate-300 font-semibold text-slate-800">{o.name}</td>
+                            <td className="p-2.5 border border-slate-300 text-center">
+                              <span className="font-bold text-[9.5pt] text-slate-900">{o.score_value?.toFixed(1)}%</span>
+                              <ProgressBar value={o.score_value} max={100} color={olc.bar} />
+                            </td>
+                            <td className="p-2.5 border border-slate-300 text-center">
+                              <div className={cn("font-extrabold text-[11pt]", olc.text)}>{o.level?.toFixed(2)}</div>
+                              <LevelBadge level={o.level} />
+                            </td>
+                            <td className="p-2.5 text-[9.5pt] border border-slate-300 text-center font-bold">{report.target_level}</td>
+                            <td className="p-2.5 border border-slate-300 text-center">
+                              <span className={cn(
+                                "inline-block px-2 py-0.5 text-[8.5pt] font-bold border",
+                                hasGap ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200"
+                              )}>
+                                {hasGap ? `+${gap.toFixed(2)}` : '0'}
+                              </span>
+                            </td>
+                            <td className="p-2.5 border border-slate-300 text-center">
+                              {hasGap ? (
+                                <span className="text-[8pt] font-bold text-red-700">⚠ Perlu Perbaikan</span>
+                              ) : (
+                                <span className="text-[8pt] font-bold text-green-700">✓ Tercapai</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
+              );
+            })}
 
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...th, width: '10%', background: `${info.color}dd` }}>Kode</th>
-                      <th style={{ ...th, width: '30%', background: `${info.color}dd` }}>Objective</th>
-                      <th style={{ ...th, width: '14%', textAlign: 'center', background: `${info.color}dd` }}>Skor (%)</th>
-                      <th style={{ ...th, width: '15%', textAlign: 'center', background: `${info.color}dd` }}>Level As-Is</th>
-                      <th style={{ ...th, width: '11%', textAlign: 'center', background: `${info.color}dd` }}>Target</th>
-                      <th style={{ ...th, width: '10%', textAlign: 'center', background: `${info.color}dd` }}>Gap</th>
-                      <th style={{ ...th, width: '10%', textAlign: 'center', background: `${info.color}dd` }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {domObjs.map((o, i) => {
-                      const gap = Math.max(0, report.target_level - o.level);
-                      const hasGap = gap > 0;
-                      const olc = levelColor(o.level);
-                      return (
-                        <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#ffffff' }}>
-                          <td style={{ ...cell, fontWeight: 700, color: info.color }}>{o.code}</td>
-                          <td style={{ ...cell }}>
-                            <span style={{ fontWeight: 600, color: '#1e293b' }}>{o.name}</span>
-                          </td>
-                          <td style={{ ...cell, textAlign: 'center' }}>
-                            <span style={{ fontWeight: 700, fontSize: '10pt', color: '#0f172a' }}>{o.score_value?.toFixed(1)}%</span>
-                            <div style={{ marginTop: '4px', height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${o.score_value}%`, background: olc.bar }} />
-                            </div>
-                          </td>
-                          <td style={{ ...cell, textAlign: 'center' }}>
-                            <div style={{ fontWeight: 800, fontSize: '12pt', color: olc.text }}>{o.level?.toFixed(2)}</div>
-                            <LevelBadge level={o.level} />
-                          </td>
-                          <td style={{ ...cell, textAlign: 'center', fontWeight: 700 }}>
-                            {report.target_level}
-                          </td>
-                          <td style={{ ...cell, textAlign: 'center' }}>
-                            <span style={{
-                              display: 'inline-block', padding: '2px 8px', fontSize: '8.5pt', fontWeight: 700,
-                              background: hasGap ? '#fef2f2' : '#f0fdf4',
-                              color: hasGap ? '#b91c1c' : '#15803d',
-                              border: `1px solid ${hasGap ? '#fecaca' : '#bbf7d0'}`,
-                            }}>
-                              {hasGap ? `+${gap.toFixed(2)}` : '0'}
-                            </span>
-                          </td>
-                          <td style={{ ...cell, textAlign: 'center' }}>
-                            {hasGap ? (
-                              <span style={{ fontSize: '8pt', fontWeight: 700, color: '#b91c1c' }}>⚠ Perlu Perbaikan</span>
-                            ) : (
-                              <span style={{ fontSize: '8pt', fontWeight: 700, color: '#15803d' }}>✓ Tercapai</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {/* Domain subtotal */}
-                  <tfoot>
-                    <tr style={{ background: `${info.color}18` }}>
-                      <td colSpan={2} style={{ ...cell, fontWeight: 700, color: info.color, borderColor: `${info.color}40` }}>
-                        Rata-rata Domain {domainKey}
-                      </td>
-                      <td style={{ ...cell, textAlign: 'center', fontWeight: 700, color: info.color, borderColor: `${info.color}40` }}>
-                        {avgScore.toFixed(1)}%
-                      </td>
-                      <td style={{ ...cell, textAlign: 'center', fontWeight: 700, color: info.color, borderColor: `${info.color}40` }}>
-                        {avgLevel.toFixed(2)}
-                      </td>
-                      <td style={{ ...cell, textAlign: 'center', fontWeight: 700, borderColor: `${info.color}40` }}>
-                        {report.target_level}
-                      </td>
-                      <td colSpan={2} style={{ ...cell, textAlign: 'center', fontWeight: 700, borderColor: `${info.color}40`, color: Math.max(0, report.target_level - avgLevel) > 0 ? '#b91c1c' : '#15803d' }}>
-                        {Math.max(0, report.target_level - avgLevel) > 0
-                          ? `Gap: +${Math.max(0, report.target_level - avgLevel).toFixed(2)}`
-                          : '✓ Target Tercapai'
-                        }
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            );
-          })}
-
-          {/* Grand Total */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '8px' }} className="no-break">
-            <tfoot>
-              <tr style={{ background: '#1e3a5f' }}>
-                <td colSpan={2} style={{ ...cell, border: '1px solid #1e3a5f', fontWeight: 700, color: '#fff' }}>Total Keseluruhan</td>
-                <td style={{ ...cell, border: '1px solid #1e3a5f', textAlign: 'center', fontWeight: 700, color: '#fff' }}>{report.score_percent?.toFixed(1)}%</td>
-                <td style={{ ...cell, border: '1px solid #1e3a5f', textAlign: 'center', fontWeight: 700, color: '#fff' }}>{report.current_level?.toFixed(2)}</td>
-                <td style={{ ...cell, border: '1px solid #1e3a5f', textAlign: 'center', fontWeight: 700, color: '#fff' }}>{report.target_level}</td>
-                <td colSpan={2} style={{ ...cell, border: '1px solid #1e3a5f', textAlign: 'center', fontWeight: 700, color: report.gap > 0 ? '#fca5a5' : '#86efac' }}>
-                  {report.gap > 0 ? `+${report.gap?.toFixed(2)}` : '✓ Tercapai'}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+            {/* Grand Total */}
+            <table className="w-full border-collapse mt-2 min-w-[600px] no-break">
+              <tfoot>
+                <tr className="bg-slate-800 text-white">
+                  <td colSpan={2} className="p-2.5 text-[9pt] border border-slate-800 font-bold">Total Keseluruhan</td>
+                  <td className="p-2.5 text-[9.5pt] border border-slate-800 text-center font-bold">{report.score_percent?.toFixed(1)}%</td>
+                  <td className="p-2.5 text-[10pt] border border-slate-800 text-center font-bold">{report.current_level?.toFixed(2)}</td>
+                  <td className="p-2.5 text-[9.5pt] border border-slate-800 text-center font-bold">{report.target_level}</td>
+                  <td colSpan={2} className={cn("p-2.5 text-[9pt] border border-slate-800 text-center font-bold", report.gap > 0 ? "text-red-300" : "text-green-300")}>
+                    {report.gap > 0 ? `+${report.gap?.toFixed(2)}` : '✓ Tercapai'}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
 
-        {/* ══ 5. SPIDER CHART PER DOMAIN (Detail) ══════ */}
-        {domainKeys.length > 1 && (
-          <div className="page-break" style={{ padding: '40px 64px', borderBottom: '1px solid #e2e8f0' }}>
-            <h2 style={{ fontSize: '12pt', fontWeight: 800, color: '#0f172a', borderLeft: '4px solid #1e3a5f', paddingLeft: '12px', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              5. Spider Chart per Domain (Tampilan Detail)
-            </h2>
-            <p style={{ fontSize: '9.5pt', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
-              Setiap domain ditampilkan dalam spider chart terpisah untuk memudahkan analisis mendalam terhadap kesenjangan kapabilitas.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
-              {domainKeys.map(domainKey => {
-                const domObjs = domainGroups[domainKey];
-                if (domObjs.length < 2) return null;
-                const info = domainInfo[domainKey] || { name: domainKey, color: '#64748b', desc: '' };
-                const avgLevel = domObjs.reduce((s, o) => s + o.level, 0) / domObjs.length;
-
-                return (
-                  <div key={domainKey} className="no-break" style={{ border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                    <div style={{ background: info.color, padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span style={{ fontWeight: 800, fontSize: '10pt', color: 'white' }}>{domainKey}</span>
-                        <span style={{ fontSize: '8.5pt', color: 'rgba(255,255,255,0.8)', marginLeft: '6px' }}>{info.name}</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontWeight: 800, fontSize: '12pt', color: 'white' }}>{avgLevel.toFixed(2)}</span>
-                        <span style={{ fontSize: '8pt', color: 'rgba(255,255,255,0.7)', marginLeft: '4px' }}>/ 5.00</span>
-                      </div>
-                    </div>
-                    <div style={{ padding: '8px', background: '#fafafa' }}>
-                      <DomainSpiderChart objectives={domObjs} targetLevel={report.target_level} color={info.color} />
-                    </div>
-                    {/* Legend */}
-                    <div style={{ padding: '8px 16px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '16px', fontSize: '8pt', color: '#64748b' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ display: 'inline-block', width: '12px', height: '3px', background: info.color }} />
-                        As-Is
-                      </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ display: 'inline-block', width: '12px', height: '2px', background: '#94a3b8', borderTop: '2px dashed #94a3b8' }} />
-                        To-Be (Level {report.target_level})
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ══ 6. REKOMENDASI ══════════════════════════ */}
-        <div style={{ padding: '40px 64px' }}>
-          <h2 style={{ fontSize: '12pt', fontWeight: 800, color: '#0f172a', borderLeft: '4px solid #1e3a5f', paddingLeft: '12px', margin: '0 0 16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {domainKeys.length > 1 ? '6' : '5'}. Rekomendasi Perbaikan
+        {/* 5. Rekomendasi */}
+        <div className="page-break sm:mt-8 pt-8 sm:border-t-2 sm:border-dashed border-slate-200 p-8 sm:p-12 md:px-16 md:py-10">
+          <h2 className="text-[12pt] font-extrabold text-slate-900 border-l-4 border-slate-800 pl-3 mb-4 uppercase tracking-wider">
+            {domainKeys.length > 1 ? '5' : '4'}. Rekomendasi Perbaikan
           </h2>
 
-          <div style={{ border: '1px solid #e2e8f0', padding: '18px 22px', background: '#f8fafc', lineHeight: 1.8, fontSize: '10pt', color: '#334155' }} className="no-break">
+          <div className="no-break border border-slate-200 bg-slate-50 p-5 text-[9.5pt] leading-relaxed text-slate-700 mb-5">
             {gapRecommendation(report.gap, report.target_level)}
           </div>
 
-          {/* Tabel rencana aksi */}
           {report.gap > 0 && (
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }} className="no-break">
-              <thead>
-                <tr>
-                  <th style={{ ...th, width: '8%', textAlign: 'center' }}>No</th>
-                  <th style={th}>Langkah Aksi</th>
-                  <th style={{ ...th, width: '20%' }}>Timeline</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  report.gap <= 0.5 && [
-                    ['Standarisasi dan dokumentasikan proses yang sudah berjalan', '1–2 Bulan'],
-                    ['Lakukan pelatihan SDM TI untuk memahami standar yang dipersyaratkan', '2–3 Bulan'],
-                    ['Jadwalkan reassessment setelah implementasi', '3 Bulan'],
-                  ],
-                  report.gap <= 1 && report.gap > 0.5 && [
-                    ['Susun SOP tertulis untuk memformalisasikan proses menuju target level', '1–2 Bulan'],
-                    ['Tunjuk Process Owner yang bertanggung jawab atas setiap objective', '1 Bulan'],
-                    ['Adakan pelatihan COBIT 2019 untuk tim internal', '2–4 Bulan'],
-                    ['Jadwalkan reassessment dalam 6 bulan', '6 Bulan'],
-                  ],
-                  report.gap <= 2 && report.gap > 1 && [
-                    ['Susun IT Governance Roadmap berbasis hasil temuan ini', '1 Bulan'],
-                    ['Prioritaskan perbaikan pada objective dengan gap terbesar', '2–3 Bulan'],
-                    ['Bentuk tim task force untuk program transformasi TI', '1–2 Bulan'],
-                    ['Integrasikan target COBIT ke dalam KPI tahunan TI', '3–6 Bulan'],
-                    ['Jadwalkan reassessment dalam 6 bulan', '6 Bulan'],
-                  ],
-                  report.gap > 2 && [
-                    ['Lakukan kajian menyeluruh atas seluruh proses TI yang ada', '< 1 Bulan'],
-                    ['Konsultasikan dengan ahli tata kelola TI bersertifikat (CGEIT/CISA)', '1 Bulan'],
-                    ['Implementasikan program perbaikan bertahap (12 bulan)', '12 Bulan'],
-                    ['Dokumentasikan seluruh proses dari awal sesuai standar COBIT 2019', '3–6 Bulan'],
-                  ],
-                ].find(Boolean)?.map(([aksi, timeline], i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                    <td style={{ ...cell, textAlign: 'center', fontWeight: 600 }}>{i + 1}</td>
-                    <td style={cell}>{aksi}</td>
-                    <td style={{ ...cell, color: '#475569' }}>{timeline}</td>
+            <div className="overflow-x-auto no-break">
+              <table className="w-full border-collapse min-w-[500px]">
+                <thead>
+                  <tr className="bg-slate-800 text-white">
+                    <th className="p-2.5 text-[9pt] border border-slate-300 w-[8%] text-center font-bold">No</th>
+                    <th className="p-2.5 text-[9pt] border border-slate-300 text-left font-bold">Langkah Aksi</th>
+                    <th className="p-2.5 text-[9pt] border border-slate-300 w-[20%] text-left font-bold">Timeline</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[
+                    report.gap <= 0.5 && [
+                      ['Standarisasi dan dokumentasikan proses yang sudah berjalan', '1–2 Bulan'],
+                      ['Lakukan pelatihan SDM TI untuk memahami standar yang dipersyaratkan', '2–3 Bulan'],
+                      ['Jadwalkan reassessment setelah implementasi', '3 Bulan'],
+                    ],
+                    report.gap <= 1 && report.gap > 0.5 && [
+                      ['Susun SOP tertulis untuk memformalisasikan proses menuju target level', '1–2 Bulan'],
+                      ['Tunjuk Process Owner yang bertanggung jawab atas setiap objective', '1 Bulan'],
+                      ['Adakan pelatihan COBIT 2019 untuk tim internal', '2–4 Bulan'],
+                      ['Jadwalkan reassessment dalam 6 bulan', '6 Bulan'],
+                    ],
+                    report.gap <= 2 && report.gap > 1 && [
+                      ['Susun IT Governance Roadmap berbasis hasil temuan ini', '1 Bulan'],
+                      ['Prioritaskan perbaikan pada objective dengan gap terbesar', '2–3 Bulan'],
+                      ['Bentuk tim task force untuk program transformasi TI', '1–2 Bulan'],
+                      ['Integrasikan target COBIT ke dalam KPI tahunan TI', '3–6 Bulan'],
+                      ['Jadwalkan reassessment dalam 6 bulan', '6 Bulan'],
+                    ],
+                    report.gap > 2 && [
+                      ['Lakukan kajian menyeluruh atas seluruh proses TI yang ada', '< 1 Bulan'],
+                      ['Konsultasikan dengan ahli tata kelola TI bersertifikat (CGEIT/CISA)', '1 Bulan'],
+                      ['Implementasikan program perbaikan bertahap (12 bulan)', '12 Bulan'],
+                      ['Dokumentasikan seluruh proses dari awal sesuai standar COBIT 2019', '3–6 Bulan'],
+                    ],
+                  ].find(Boolean)?.map(([aksi, timeline], i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-slate-50" : "bg-white"}>
+                      <td className="p-2.5 text-[9pt] border border-slate-300 text-center font-semibold text-slate-700">{i + 1}</td>
+                      <td className="p-2.5 text-[9pt] border border-slate-300 text-slate-800">{aksi}</td>
+                      <td className="p-2.5 text-[9pt] border border-slate-300 text-slate-600">{timeline}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
-          {/* Footer dokumen */}
-          <div style={{ marginTop: '40px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: '8.5pt', color: '#94a3b8' }}>
+          {/* Footer Dokumen */}
+          <div className="mt-12 pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:justify-between text-[8pt] text-slate-500">
             <span>Dokumen Penilaian COBIT 2019 — No. COBIT-{String(report.assessment_id).padStart(4, '0')}</span>
-            <span>Dicetak: {printDate}</span>
+            <span className="mt-1 sm:mt-0">Dicetak: {printDate}</span>
           </div>
         </div>
-
-      </div>
+      </Card>
     </div>
   );
 }
