@@ -70,7 +70,9 @@ func (s *assessmentService) CreateAssessment(input CreateAssessmentInput, assess
 }
 
 func (s *assessmentService) GetMyAssessments(userID uint, role string) ([]model.Assessment, error) {
-	if role == "Assessor" || role == "Admin" {
+	if role == "Admin" {
+		return s.repo.GetAllAssessments()
+	} else if role == "Assessor" {
 		return s.repo.GetAssessmentsByAssessor(userID)
 	} else if role == "Auditee" {
 		return s.repo.GetAssessmentsByAuditee(userID)
