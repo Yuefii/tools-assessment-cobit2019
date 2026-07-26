@@ -17,6 +17,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -26,19 +36,23 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, ClipboardList, Loader2, BarChart3, AlertCircle, ChevronDown, ChevronRight, ChevronLeft, PenSquare, Eye, Search } from 'lucide-react';
+import { Plus, ClipboardList, Loader2, BarChart3, AlertCircle, ChevronDown, ChevronRight, ChevronLeft, PenSquare, Eye, Search, Trash2 } from 'lucide-react';
 
 export default function Assessments() {
   const [assessments, setAssessments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { isAssessor, isAdmin } = useAuth();
+  const { user, isAssessor, isAdmin } = useAuth();
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [modalStep, setModalStep] = useState(1); // 1=info, 2=pick scope
   const [submitting, setSubmitting] = useState(false);
+
+  // Delete state
+  const [assessmentToDelete, setAssessmentToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Data for modal
   const [allDomains, setAllDomains] = useState<any[]>([]);
@@ -178,6 +192,20 @@ export default function Assessments() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!assessmentToDelete) return;
+    setIsDeleting(true);
+    try {
+      await assessmentAPI.delete(assessmentToDelete.id);
+      setAssessmentToDelete(null);
+      fetchAssessments(); // Refresh
+    } catch (e: any) {
+      alert(e.message || 'Gagal menghapus assessment');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const canCreate = isAssessor?.() || isAdmin?.();
 
   // Derived: how many objectives per domain are selected
@@ -272,15 +300,29 @@ export default function Assessments() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {assessments.map(a => (
-              <Card key={a.id} className="flex flex-col overflow-hidden hover:shadow-md transition-shadow">
+              <Card key={a.id} className="flex flex-col overflow-hidden hover:shadow-md transition-shadow relative">
                 <CardHeader className="p-5 pb-4">
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-2 pr-6">
                     <StatusBadge status={a.status} />
                     <Badge variant="secondary" className="font-semibold text-[10px] tracking-wider uppercase">
                       Target: Level {a.target_level}
                     </Badge>
                   </div>
-                  <CardTitle className="text-lg leading-tight mb-1">{a.title}</CardTitle>
+                  {(isAdmin?.() || (isAssessor?.() && a.assessor_id === user?.id)) && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute top-3 right-3 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAssessmentToDelete(a);
+                      }}
+                      title="Hapus Assessment"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <CardTitle className="text-lg leading-tight mb-1 pr-6">{a.title}</CardTitle>
                   
                   {/* Scope badges */}
                   <div className="mt-3">
@@ -613,6 +655,31 @@ export default function Assessments() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ════════════════════════════════════
+          DELETE ALERT DIALOG
+      ════════════════════════════════════ */}
+      <AlertDialog open={!!assessmentToDelete} onOpenChange={(open) => !open && setAssessmentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Assessment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Assessment <strong>"{assessmentToDelete?.title}"</strong> beserta data audit terkait (jawaban, bukti, dsb) akan dihapus secara permanen dari sistem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); handleDelete(); }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

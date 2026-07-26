@@ -506,6 +506,7 @@ func main() {
 	// Assessor/Admin only
 	assessments.Post("/", middleware.CheckRole("Admin", "Assessor"), assessmentHandler.CreateAssessment)
 	assessments.Put("/:id/status", middleware.CheckRole("Admin", "Assessor"), assessmentHandler.UpdateAssessmentStatus)
+	assessments.Delete("/:id", middleware.CheckRole("Admin", "Assessor"), assessmentHandler.DeleteAssessment)
 	
 	// Auditee only
 	assessments.Post("/answers", middleware.CheckRole("Admin", "Assessor", "Auditee"), assessmentHandler.SubmitAnswer)

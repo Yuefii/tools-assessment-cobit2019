@@ -47,6 +47,7 @@ export const assessmentAPI = {
   getById: (id) => fetch(`${BASE_URL}/assessments/${id}`, { headers: headers() }).then(handleResponse),
   create: (data) => fetch(`${BASE_URL}/assessments`, { method: 'POST', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
   updateStatus: (id, status) => fetch(`${BASE_URL}/assessments/${id}/status`, { method: 'PUT', headers: headers(), body: JSON.stringify({ status }) }).then(handleResponse),
+  delete: (id) => fetch(`${BASE_URL}/assessments/${id}`, { method: 'DELETE', headers: headers() }).then(handleResponse),
   getAnswers: (id) => fetch(`${BASE_URL}/assessments/${id}/answers`, { headers: headers() }).then(handleResponse),
   submitAnswer: (data) => fetch(`${BASE_URL}/assessments/answers`, { method: 'POST', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
 };

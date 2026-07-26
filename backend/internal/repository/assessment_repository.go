@@ -11,6 +11,7 @@ type AssessmentRepository interface {
 	GetAssessmentByID(id uint) (*model.Assessment, error)
 	GetAssessmentsByAuditee(auditeeID uint, page, limit int, search string) ([]model.Assessment, int64, error)
 	GetAssessmentsByAssessor(assessorID uint, page, limit int, search string) ([]model.Assessment, int64, error)
+	DeleteAssessment(id uint) error
 	
 	SubmitAnswer(answer *model.Answer) error
 	GetAnswersByAssessment(assessmentID uint) ([]model.Answer, error)
@@ -30,6 +31,11 @@ func NewAssessmentRepository(db *gorm.DB) AssessmentRepository {
 
 func (r *assessmentRepository) CreateAssessment(assessment *model.Assessment) error {
 	return r.db.Create(assessment).Error
+}
+
+func (r *assessmentRepository) DeleteAssessment(id uint) error {
+	// GORM soft deletes by default since model has DeletedAt
+	return r.db.Delete(&model.Assessment{}, id).Error
 }
 
 func (r *assessmentRepository) GetAllAssessments(page, limit int, search string) ([]model.Assessment, int64, error) {

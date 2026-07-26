@@ -11,6 +11,7 @@ type AssessmentService interface {
 	CreateAssessment(input CreateAssessmentInput, assessorID uint) (*model.Assessment, error)
 	GetMyAssessments(userID uint, role string, page, limit int, search string) ([]model.Assessment, int64, error)
 	GetAssessmentDetails(id uint) (*model.Assessment, error)
+	DeleteAssessment(id uint, userID uint, role string) error
 	
 	SubmitAnswer(input SubmitAnswerInput, auditeeID uint, role string) error
 	GetAssessmentAnswers(assessmentID uint) ([]model.Answer, error)
@@ -82,6 +83,19 @@ func (s *assessmentService) GetMyAssessments(userID uint, role string, page, lim
 
 func (s *assessmentService) GetAssessmentDetails(id uint) (*model.Assessment, error) {
 	return s.repo.GetAssessmentByID(id)
+}
+
+func (s *assessmentService) DeleteAssessment(id uint, userID uint, role string) error {
+	assessment, err := s.repo.GetAssessmentByID(id)
+	if err != nil {
+		return errors.New("assessment not found")
+	}
+
+	if role != "Admin" && (role != "Assessor" || assessment.AssessorID != userID) {
+		return errors.New("unauthorized to delete this assessment")
+	}
+
+	return s.repo.DeleteAssessment(id)
 }
 
 func (s *assessmentService) SubmitAnswer(input SubmitAnswerInput, auditeeID uint, role string) error {

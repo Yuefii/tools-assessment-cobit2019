@@ -127,3 +127,19 @@ func (h *AssessmentHandler) UpdateAssessmentStatus(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"data": assessment})
 }
+
+func (h *AssessmentHandler) DeleteAssessment(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
+	}
+
+	userID := uint(c.Locals("user_id").(float64))
+	role := c.Locals("role").(string)
+
+	if err := h.assessmentService.DeleteAssessment(uint(id), userID, role); err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"message": "Assessment deleted successfully"})
+}
