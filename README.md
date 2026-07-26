@@ -38,7 +38,7 @@ Platform evaluasi dan penilaian tingkat kematangan tata kelola teknologi informa
 ### 1. Use Case Diagram
 Menggambarkan interaksi alur bisnis (beserta relasi *include* dan *extend*) yang diizinkan untuk Admin, Assessor, dan Auditee terhadap fungsionalitas sistem.
 
-![Use Case Diagram](docs/usecase.png)
+![Use Case Diagram](docs/use_case.png)
 
 ### 2. Class Diagram (Database Entity-Relationship)
 Struktur basis data relasional (*schema*) yang menopang master data hierarki tata kelola COBIT 2019 (*Domain -> Objective -> Practice -> Activity*) dan proses pivot asesmen secara persisten.
