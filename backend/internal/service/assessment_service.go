@@ -15,7 +15,7 @@ type AssessmentService interface {
 	
 	SubmitAnswer(input SubmitAnswerInput, auditeeID uint, role string) error
 	GetAssessmentAnswers(assessmentID uint) ([]model.Answer, error)
-	UpdateAssessmentStatus(id uint, status string) (*model.Assessment, error)
+	UpdateAssessmentStatus(id uint, status string, userID uint, role string) (*model.Assessment, error)
 }
 
 type assessmentService struct {
@@ -109,6 +109,10 @@ func (s *assessmentService) SubmitAnswer(input SubmitAnswerInput, auditeeID uint
 		return errors.New("not authorized to submit answers for this assessment")
 	}
 
+	if assessment.Status == "completed" {
+		return errors.New("cannot submit answers for a completed assessment")
+	}
+
 	// Validate ScoreValue (N, P, L, F)
 	validScores := map[string]bool{"N": true, "P": true, "L": true, "F": true}
 	if !validScores[input.ScoreValue] {
@@ -129,11 +133,16 @@ func (s *assessmentService) GetAssessmentAnswers(assessmentID uint) ([]model.Ans
 	return s.repo.GetAnswersByAssessment(assessmentID)
 }
 
-func (s *assessmentService) UpdateAssessmentStatus(id uint, status string) (*model.Assessment, error) {
+func (s *assessmentService) UpdateAssessmentStatus(id uint, status string, userID uint, role string) (*model.Assessment, error) {
 	assessment, err := s.repo.GetAssessmentByID(id)
 	if err != nil {
 		return nil, errors.New("assessment not found")
 	}
+	
+	if role != "Admin" && (role != "Assessor" || assessment.AssessorID != userID) {
+		return nil, errors.New("unauthorized to update this assessment status")
+	}
+
 	validStatuses := map[string]bool{"draft": true, "active": true, "completed": true}
 	if !validStatuses[status] {
 		return nil, errors.New("invalid status")

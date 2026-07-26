@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { assessmentAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +16,9 @@ import { cn } from "@/lib/utils";
 export default function AssessmentWizard() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuditee } = useAuth();
   const [assessment, setAssessment] = useState<any>(null);
+  const isReadOnly = (isAuditee && !isAuditee()) || assessment?.status === 'completed';
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
@@ -110,6 +114,7 @@ export default function AssessmentWizard() {
   })();
 
   const handleSelectScore = (score: string) => {
+    if (isReadOnly) return;
     const qId = questions[currentStep].id;
     setAnswers({ ...answers, [qId]: score });
   };
@@ -117,21 +122,25 @@ export default function AssessmentWizard() {
   const handleSaveAndNext = async () => {
     const q = questions[currentStep];
     const score = answers[q.id];
-    if (!score) return;
-    try {
-      await assessmentAPI.submitAnswer({
-        assessment_id: parseInt(id!),
-        activity_id: q.id,
-        score_value: score,
-        evidence_url: evidence[q.id] || '',
-      });
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      const grpIdx = objectiveGroups.findIndex(g => g.startIdx <= nextStep && g.endIdx >= nextStep);
-      if (grpIdx >= 0) setActiveGroupIndex(grpIdx);
-    } catch (e: any) {
-      alert('Gagal menyimpan jawaban: ' + (e.message || 'Error'));
+    
+    if (!isReadOnly && score) {
+      try {
+        await assessmentAPI.submitAnswer({
+          assessment_id: parseInt(id!),
+          activity_id: q.id,
+          score_value: score,
+          evidence_url: evidence[q.id] || '',
+        });
+      } catch (e: any) {
+        alert('Gagal menyimpan jawaban: ' + (e.message || 'Error'));
+        return;
+      }
     }
+
+    const nextStep = currentStep + 1;
+    setCurrentStep(nextStep);
+    const grpIdx = objectiveGroups.findIndex(g => g.startIdx <= nextStep && g.endIdx >= nextStep);
+    if (grpIdx >= 0) setActiveGroupIndex(grpIdx);
   };
 
   const handlePrev = () => {
@@ -144,6 +153,10 @@ export default function AssessmentWizard() {
   };
 
   const handleSubmitAll = async () => {
+    if (isReadOnly) {
+      navigate(`/dashboard/assessments/${id}/report`);
+      return;
+    }
     const q = questions[currentStep];
     const score = answers[q.id];
     if (!score) return;
@@ -155,9 +168,10 @@ export default function AssessmentWizard() {
         score_value: score,
         evidence_url: evidence[q.id] || '',
       });
-      navigate(`/dashboard/assessments/${id}/report`);
+      toast.success('Jawaban berhasil dikirim! Menunggu review dari Assessor.');
+      navigate(`/dashboard/assessments`);
     } catch (e: any) {
-      alert('Gagal submit: ' + (e.message || 'Error'));
+      toast.error('Gagal submit: ' + (e.message || 'Error'));
     } finally {
       setSubmitting(false);
     }
@@ -221,7 +235,12 @@ export default function AssessmentWizard() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">{assessment?.title}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">{assessment?.title}</h1>
+              {isReadOnly && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Mode Review</Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
               {objectiveGroups.length > 1
                 ? `${objectiveGroups.length} Objective — ${objectiveGroups.map(g => g.code).join(', ')}`
@@ -327,14 +346,16 @@ export default function AssessmentWizard() {
                         "flex items-start p-4 rounded-xl border-2 transition-all duration-200 text-left bg-card group",
                         isSelected
                           ? "border-primary ring-1 ring-primary shadow-sm bg-primary/5"
-                          : "border-border hover:border-primary/50 hover:bg-muted/30"
+                          : "border-border hover:border-primary/50 hover:bg-muted/30",
+                        isReadOnly && "cursor-default hover:border-border hover:bg-card"
                       )}
                     >
                       <div className={cn(
                         "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg mr-4 shrink-0 transition-colors border-2",
                         isSelected 
                           ? "bg-primary border-primary text-primary-foreground" 
-                          : "bg-muted border-transparent text-muted-foreground group-hover:border-primary/30 group-hover:text-foreground"
+                          : "bg-muted border-transparent text-muted-foreground",
+                        !isReadOnly && !isSelected && "group-hover:border-primary/30 group-hover:text-foreground"
                       )}>
                         {opt.value}
                       </div>
@@ -364,9 +385,10 @@ export default function AssessmentWizard() {
                 <Textarea
                   id="evidence"
                   className="bg-background resize-none min-h-[80px]"
-                  placeholder="Tautkan URL dokumen bukti atau tambahkan catatan di sini..."
+                  placeholder={isReadOnly ? "Tidak ada bukti/catatan" : "Tautkan URL dokumen bukti atau tambahkan catatan di sini..."}
                   value={evidence[currentQ.id] || ''}
                   onChange={e => setEvidence({ ...evidence, [currentQ.id]: e.target.value })}
+                  disabled={isReadOnly}
                 />
               </div>
             </CardContent>
@@ -387,24 +409,24 @@ export default function AssessmentWizard() {
               {currentStep < questions.length - 1 ? (
                 <Button
                   onClick={handleSaveAndNext}
-                  disabled={!currentAnswer}
+                  disabled={!isReadOnly && !currentAnswer}
                   className="px-6 sm:px-8"
                 >
-                  <span className="hidden sm:inline">Simpan & Lanjut</span>
-                  <span className="inline sm:hidden">Lanjut</span>
+                  <span className="hidden sm:inline">{isReadOnly ? 'Selanjutnya' : 'Simpan & Lanjut'}</span>
+                  <span className="inline sm:hidden">{isReadOnly ? 'Lanjut' : 'Simpan'}</span>
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
                 <Button
                   onClick={handleSubmitAll}
-                  disabled={!currentAnswer || submitting}
+                  disabled={(!isReadOnly && !currentAnswer) || submitting}
                   className={cn(
                     "px-6 sm:px-8 transition-all",
-                    currentAnswer ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                    currentAnswer && !isReadOnly ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
                   )}
                 >
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {submitting ? 'Menyimpan...' : 'Selesai & Kirim'}
+                  {submitting ? (isReadOnly ? 'Memproses...' : 'Menyimpan...') : (isReadOnly ? 'Tutup Review' : 'Selesai & Kirim')}
                   {!submitting && <Send className="ml-2 h-4 w-4" />}
                 </Button>
               )}

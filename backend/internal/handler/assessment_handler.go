@@ -121,7 +121,11 @@ func (h *AssessmentHandler) UpdateAssessmentStatus(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	assessment, err := h.assessmentService.UpdateAssessmentStatus(uint(id), input.Status)
+
+	userID := uint(c.Locals("user_id").(float64))
+	role := c.Locals("role").(string)
+
+	assessment, err := h.assessmentService.UpdateAssessmentStatus(uint(id), input.Status, userID, role)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}

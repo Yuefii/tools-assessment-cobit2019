@@ -36,14 +36,14 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, ClipboardList, Loader2, BarChart3, AlertCircle, ChevronDown, ChevronRight, ChevronLeft, PenSquare, Eye, Search, Trash2 } from 'lucide-react';
+import { Plus, ClipboardList, Loader2, BarChart3, AlertCircle, ChevronDown, ChevronRight, ChevronLeft, PenSquare, Eye, Search, Trash2, CheckCircle2, Undo2 } from 'lucide-react';
 
 export default function Assessments() {
   const [assessments, setAssessments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { user, isAssessor, isAdmin } = useAuth();
+  const { user, isAssessor, isAdmin, isAuditee } = useAuth();
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -53,6 +53,10 @@ export default function Assessments() {
   // Delete state
   const [assessmentToDelete, setAssessmentToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Complete state
+  const [assessmentToComplete, setAssessmentToComplete] = useState<any>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Data for modal
   const [allDomains, setAllDomains] = useState<any[]>([]);
@@ -203,6 +207,15 @@ export default function Assessments() {
       alert(e.message || 'Gagal menghapus assessment');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id: number, status: string) => {
+    try {
+      await assessmentAPI.updateStatus(id, status);
+      await fetchAssessments();
+    } catch (e: any) {
+      alert(e.message || 'Gagal mengubah status');
     }
   };
 
@@ -363,22 +376,67 @@ export default function Assessments() {
                 </CardContent>
 
                 <CardFooter className="p-4 bg-muted/30 border-t gap-2">
-                  <Button 
-                    onClick={() => navigate(`/dashboard/assessments/${a.id}/fill`)} 
-                    className="w-full flex-1"
-                  >
-                    <PenSquare className="mr-2 h-4 w-4" />
-                    Isi Kuesioner
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)}
-                    title="Lihat Laporan"
-                    className="shrink-0"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                  </Button>
+                  {isAuditee && isAuditee() ? (
+                    <>
+                      <Button 
+                        onClick={() => navigate(`/dashboard/assessments/${a.id}/fill`)} 
+                        className="w-full flex-1"
+                        variant={a.status === 'completed' ? 'outline' : 'default'}
+                      >
+                        {a.status === 'completed' ? <Eye className="mr-2 h-4 w-4" /> : <PenSquare className="mr-2 h-4 w-4" />}
+                        {a.status === 'completed' ? 'Lihat Jawaban' : 'Isi Kuesioner'}
+                      </Button>
+                      {a.status === 'completed' && (
+                        <Button 
+                          variant="default" 
+                          size="icon"
+                          onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)}
+                          title="Lihat Laporan"
+                          className="shrink-0"
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Button 
+                        onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)} 
+                        className="w-full flex-1"
+                        variant={a.status === 'completed' ? 'default' : 'outline'}
+                      >
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        Laporan
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => navigate(`/dashboard/assessments/${a.id}/fill`)}
+                        title="Review Kuesioner"
+                        className="shrink-0 px-3"
+                      >
+                        <Eye className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Review</span>
+                      </Button>
+                      {a.status === 'completed' ? (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleUpdateStatus(a.id, 'active')}
+                          title="Buka Kembali (Active)"
+                          className="shrink-0 px-3 text-muted-foreground hover:text-foreground"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={() => setAssessmentToComplete(a)}
+                          title="Tandai Selesai"
+                          className="shrink-0 px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
                 </CardFooter>
               </Card>
             ))}
@@ -676,6 +734,39 @@ export default function Assessments() {
             >
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ════════════════════════════════════
+          COMPLETE ALERT DIALOG
+      ════════════════════════════════════ */}
+      <AlertDialog open={!!assessmentToComplete} onOpenChange={(open) => !open && setAssessmentToComplete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tandai Assessment Selesai?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menyelesaikan penilaian <strong>"{assessmentToComplete?.title}"</strong>? 
+              Setelah ditandai selesai, laporan akhir akan dapat diakses oleh Auditee dan statusnya akan berubah menjadi Completed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCompleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                setIsCompleting(true);
+                handleUpdateStatus(assessmentToComplete.id, 'completed').finally(() => {
+                  setIsCompleting(false);
+                  setAssessmentToComplete(null);
+                });
+              }} 
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={isCompleting}
+            >
+              {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+              {isCompleting ? 'Menyimpan...' : 'Ya, Selesai'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

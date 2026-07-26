@@ -71,7 +71,7 @@ func (r *assessmentRepository) GetAssessmentsByAuditee(auditeeID uint, page, lim
 	var total int64
 	query.Count(&total)
 	offset := (page - 1) * limit
-	err := query.Preload("Assessor").Preload("Objectives.Objective").
+	err := query.Preload("Assessor").Preload("Auditee").Preload("Objectives.Objective").
 		Offset(offset).Limit(limit).Find(&assessments).Error
 	return assessments, total, err
 }

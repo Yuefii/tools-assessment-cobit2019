@@ -515,13 +515,13 @@ func main() {
 	reports := v1.Group("/reports", middleware.Protected())
 	reports.Get("/:id", reportHandler.GenerateReport)
 
-	// User routes (Admin only)
-	users := v1.Group("/users", middleware.Protected(), middleware.CheckRole("Admin"))
-	users.Get("/", userHandler.GetAllUsers)
-	users.Post("/", userHandler.CreateUser)
-	users.Put("/:id", userHandler.UpdateUser)
-	users.Put("/:id/reset-password", userHandler.AdminResetPassword)
-	users.Delete("/:id", userHandler.DeleteUser)
+	// User routes
+	users := v1.Group("/users", middleware.Protected())
+	users.Get("/", middleware.CheckRole("Admin", "Assessor"), userHandler.GetAllUsers)
+	users.Post("/", middleware.CheckRole("Admin"), userHandler.CreateUser)
+	users.Put("/:id", middleware.CheckRole("Admin"), userHandler.UpdateUser)
+	users.Put("/:id/reset-password", middleware.CheckRole("Admin"), userHandler.AdminResetPassword)
+	users.Delete("/:id", middleware.CheckRole("Admin"), userHandler.DeleteUser)
 
 	// Current user info (any logged in user)
 	v1.Get("/me", middleware.Protected(), userHandler.GetMe)
