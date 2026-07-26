@@ -7,11 +7,13 @@ import MasterData from './pages/MasterData'
 import Assessments from './pages/Assessments'
 import AssessmentWizard from './pages/AssessmentWizard'
 import Report from './pages/Report'
+import { Toaster } from "@/components/ui/sonner"
 import './App.css'
 
 function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Layout />}>
@@ -22,7 +24,9 @@ function App() {
         <Route path="assessments/:id/fill" element={<AssessmentWizard />} />
         <Route path="assessments/:id/report" element={<Report />} />
       </Route>
-    </Routes>
+      </Routes>
+      <Toaster />
+    </>
   )
 }
 

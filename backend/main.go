@@ -520,6 +520,7 @@ func main() {
 	users.Get("/", userHandler.GetAllUsers)
 	users.Post("/", userHandler.CreateUser)
 	users.Put("/:id", userHandler.UpdateUser)
+	users.Put("/:id/reset-password", userHandler.AdminResetPassword)
 	users.Delete("/:id", userHandler.DeleteUser)
 
 	// Current user info (any logged in user)

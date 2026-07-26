@@ -30,6 +30,7 @@ export const userAPI = {
   create: (data) => fetch(`${BASE_URL}/users`, { method: 'POST', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
   update: (id, data) => fetch(`${BASE_URL}/users/${id}`, { method: 'PUT', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
   delete: (id) => fetch(`${BASE_URL}/users/${id}`, { method: 'DELETE', headers: headers() }).then(handleResponse),
+  adminResetPassword: (id, new_password) => fetch(`${BASE_URL}/users/${id}/reset-password`, { method: 'PUT', headers: headers(), body: JSON.stringify({ new_password }) }).then(handleResponse),
 };
 
 export const cobitAPI = {

@@ -127,3 +127,27 @@ func (h *UserHandler) UpdateMyPassword(c *fiber.Ctx) error {
 	
 	return c.JSON(fiber.Map{"message": "Password berhasil diperbarui"})
 }
+
+func (h *UserHandler) AdminResetPassword(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
+	}
+
+	var input struct {
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if len(input.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Password minimal 6 karakter"})
+	}
+
+	if err := h.userService.AdminResetPassword(uint(id), input.NewPassword); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"message": "Password user berhasil di-reset"})
+}

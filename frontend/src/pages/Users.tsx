@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from "sonner";
 import { userAPI } from '../services/api';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -22,7 +23,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Search, Edit2, Trash2, Shield, User as UserIcon, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, Search, Edit2, Trash2, Shield, User as UserIcon, UserCheck, ChevronLeft, ChevronRight, KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ROLES = ['Admin', 'Assessor', 'Auditee'];
@@ -41,6 +42,9 @@ export default function Users() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
   const [deleteUser, setDeleteUser] = useState<any>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Auditee' });
 
@@ -92,8 +96,9 @@ export default function Users() {
       }
       setShowModal(false);
       await fetchUsers();
+      toast.success(editUser ? 'Pengguna berhasil diperbarui!' : 'Pengguna baru berhasil dibuat!');
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message || 'Terjadi kesalahan');
     } finally {
       setSubmitting(false);
     }
@@ -105,8 +110,25 @@ export default function Users() {
       await userAPI.delete(deleteUser.id);
       setDeleteUser(null);
       await fetchUsers();
+      toast.success('Pengguna berhasil dihapus!');
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message || 'Gagal menghapus pengguna');
+    }
+  };
+
+  const confirmResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPasswordUser || newPassword.length < 6) return;
+    setIsResetting(true);
+    try {
+      await userAPI.adminResetPassword(resetPasswordUser.id, newPassword);
+      setResetPasswordUser(null);
+      setNewPassword('');
+      toast.success('Password berhasil di-reset!');
+    } catch (e: any) {
+      toast.error(e.message || 'Gagal mereset password');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -199,7 +221,10 @@ export default function Users() {
                         </TableCell>
                         <TableCell className="text-right pr-4">
                           <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(u)} className="h-8 w-8 text-muted-foreground hover:text-primary">
+                            <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(u); setNewPassword(''); }} className="h-8 w-8 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10" title="Reset Password">
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(u)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Edit Pengguna">
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => setDeleteUser(u)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
@@ -327,6 +352,41 @@ export default function Users() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetPasswordUser} onOpenChange={(open) => !open && setResetPasswordUser(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Ubah password untuk pengguna <strong>{resetPasswordUser?.name}</strong>. Pastikan untuk memberikan password baru ini kepada pengguna tersebut.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={confirmResetPassword} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-admin-password">Password Baru <span className="text-destructive">*</span></Label>
+              <Input 
+                id="new-admin-password" 
+                type="password" 
+                required 
+                minLength={6} 
+                value={newPassword} 
+                onChange={e => setNewPassword(e.target.value)} 
+                placeholder="Minimal 6 karakter..." 
+              />
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setResetPasswordUser(null)} disabled={isResetting}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isResetting} className="bg-amber-600 hover:bg-amber-700 text-white">
+                {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Reset Password
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
