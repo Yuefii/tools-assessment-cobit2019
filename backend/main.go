@@ -420,7 +420,7 @@ func initDatabase() {
 
 	seedRoles(DB)
 	seed.SeedCobitDataFull(DB)
-	seed.SeedDemoAssessment(DB) // TODO: hapus/komentari setelah data demo berhasil dibuat
+	seed.SeedAllDemoAssessments(DB) // TODO: hapus/komentari setelah data demo berhasil dibuat
 
 	log.Println("Database Migration Completed!")
 }

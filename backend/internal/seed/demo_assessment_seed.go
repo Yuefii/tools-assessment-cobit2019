@@ -27,10 +27,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// SeedDemoAssessment creates a realistic one-time demo assessment for
-// PT. Nusantara Digital Tbk. Safe to call multiple times (idempotent via title check).
-func SeedDemoAssessment(db *gorm.DB) {
-	// Idempotency guard — skip if demo assessment already exists
+// SeedAllDemoAssessments calls all demo scenarios
+func SeedAllDemoAssessments(db *gorm.DB) {
+	seedDemoBank(db)
+	seedDemoHospital(db)
+	seedDemoUniversity(db)
+}
+
+func seedDemoBank(db *gorm.DB) {
 	var count int64
 	db.Model(&model.Assessment{}).Where("title LIKE ?", "%PT. Nusantara Digital%").Count(&count)
 	if count > 0 {
@@ -189,8 +193,115 @@ func SeedDemoAssessment(db *gorm.DB) {
 	log.Printf("[Demo Seed]    Jawaban       : %d activities dijawab", answersCreated)
 	log.Printf("[Demo Seed]    Target Level  : 3 (Defined)")
 	log.Printf("[Demo Seed]    Status        : completed")
-	log.Printf("[Demo Seed]")
-	log.Printf("[Demo Seed]  ⚠ Hapus/komentari pemanggilan SeedDemoAssessment() di main.go setelah ini.")
+	log.Printf("[Demo Seed]  ===============================================")
+}
+
+func seedDemoHospital(db *gorm.DB) {
+	var count int64
+	db.Model(&model.Assessment{}).Where("title LIKE ?", "%RSUD Sehat Sentosa%").Count(&count)
+	if count > 0 {
+		log.Println("[Demo Seed] Assessment RSUD Sehat Sentosa sudah ada, skip.")
+		return
+	}
+	log.Println("[Demo Seed] Membuat demo assessment RSUD Sehat Sentosa...")
+
+	var assessorRole, auditeeRole model.Role
+	db.FirstOrCreate(&assessorRole, model.Role{Name: "Assessor"})
+	db.FirstOrCreate(&auditeeRole, model.Role{Name: "Auditee"})
+
+	hash := func(pw string) string {
+		b, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+		return string(b)
+	}
+
+	assessor := model.User{Name: "dr. Andi Wijaya, MARS", Email: "andi.wijaya@rsud.go.id", Password: hash("RSUD@2025"), RoleID: assessorRole.ID}
+	db.FirstOrCreate(&assessor, model.User{Email: assessor.Email})
+
+	auditee := model.User{Name: "Rudi Hartono (Ka. SIMRS)", Email: "rudi.simrs@rsud.go.id", Password: hash("SIMRS@2025"), RoleID: auditeeRole.ID}
+	db.FirstOrCreate(&auditee, model.User{Email: auditee.Email})
+
+	// Focus: BAI (Build, Acquire, Implement) & MEA
+	targetObjectiveCodes := []string{"BAI01", "BAI02", "BAI03", "MEA01"}
+	var objectives []model.CobitObjective
+	db.Preload("Practices.Activities").Where("code IN ?", targetObjectiveCodes).Find(&objectives)
+
+	assessment := model.Assessment{
+		Title:       "Audit Implementasi SIMRS Baru — RSUD Sehat Sentosa",
+		TargetLevel: 2, // Target Level 2 (Managed) - krn sistem baru
+		Status:      "completed",
+		AssessorID:  assessor.ID,
+		AuditeeID:   auditee.ID,
+		ScopeNote:   "Evaluasi implementasi Sistem Informasi Manajemen RS (SIMRS) yang baru diluncurkan bulan lalu.",
+	}
+	db.Create(&assessment)
+	for _, obj := range objectives {
+		db.Create(&model.AssessmentObjective{AssessmentID: assessment.ID, ObjectiveID: obj.ID})
+	}
+
+	// Scores: mostly Not achieved or Partially achieved
+	for _, obj := range objectives {
+		for _, practice := range obj.Practices {
+			for _, activity := range practice.Activities {
+				score := []string{"N", "N", "P", "N", "P"}[rand.Intn(5)]
+				db.Create(&model.Answer{AssessmentID: assessment.ID, ActivityID: activity.ID, ScoreValue: score, EvidenceURL: ""})
+			}
+		}
+	}
+	log.Printf("[Demo Seed] ✅ Demo RSUD Sehat Sentosa berhasil dibuat!")
+}
+
+func seedDemoUniversity(db *gorm.DB) {
+	var count int64
+	db.Model(&model.Assessment{}).Where("title LIKE ?", "%Universitas Harapan Bangsa%").Count(&count)
+	if count > 0 {
+		log.Println("[Demo Seed] Assessment Univ Harapan Bangsa sudah ada, skip.")
+		return
+	}
+	log.Println("[Demo Seed] Membuat demo assessment Univ Harapan Bangsa...")
+
+	var assessorRole, auditeeRole model.Role
+	db.FirstOrCreate(&assessorRole, model.Role{Name: "Assessor"})
+	db.FirstOrCreate(&auditeeRole, model.Role{Name: "Auditee"})
+
+	hash := func(pw string) string {
+		b, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+		return string(b)
+	}
+
+	assessor := model.User{Name: "Dr. Hendra (Auditor Eksternal)", Email: "hendra@konsultan-it.com", Password: hash("Konsultan@2025"), RoleID: assessorRole.ID}
+	db.FirstOrCreate(&assessor, model.User{Email: assessor.Email})
+
+	auditee := model.User{Name: "Prof. Johan (Direktur TIK)", Email: "johan@uhb.ac.id", Password: hash("UHB@2025"), RoleID: auditeeRole.ID}
+	db.FirstOrCreate(&auditee, model.User{Email: auditee.Email})
+
+	// Focus: Security & Continuity
+	targetObjectiveCodes := []string{"DSS04", "DSS05", "APO12", "APO13"}
+	var objectives []model.CobitObjective
+	db.Preload("Practices.Activities").Where("code IN ?", targetObjectiveCodes).Find(&objectives)
+
+	assessment := model.Assessment{
+		Title:       "Audit Keamanan Data Mahasiswa & E-Learning — Universitas Harapan Bangsa",
+		TargetLevel: 3, 
+		Status:      "completed",
+		AssessorID:  assessor.ID,
+		AuditeeID:   auditee.ID,
+		ScopeNote:   "Menindaklanjuti insiden kebocoran data akademik tahun lalu, audit difokuskan pada Keamanan (DSS05, APO13) dan Kontinuitas (DSS04).",
+	}
+	db.Create(&assessment)
+	for _, obj := range objectives {
+		db.Create(&model.AssessmentObjective{AssessmentID: assessment.ID, ObjectiveID: obj.ID})
+	}
+
+	// Scores: mixed
+	for _, obj := range objectives {
+		for _, practice := range obj.Practices {
+			for _, activity := range practice.Activities {
+				score := []string{"P", "L", "P", "N", "F", "L"}[rand.Intn(6)]
+				db.Create(&model.Answer{AssessmentID: assessment.ID, ActivityID: activity.ID, ScoreValue: score, EvidenceURL: ""})
+			}
+		}
+	}
+	log.Printf("[Demo Seed] ✅ Demo Universitas Harapan Bangsa berhasil dibuat!")
 }
 
 // evidenceURL generates a realistic-looking evidence document URL based on
