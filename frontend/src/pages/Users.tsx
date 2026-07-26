@@ -1,25 +1,53 @@
 import { useState, useEffect } from 'react';
 import { userAPI } from '../services/api';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Plus, Search, Edit2, Trash2, Shield, User as UserIcon, UserCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const ROLES = ['Admin', 'Assessor', 'Auditee'];
 
 export default function Users() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  
   const [showModal, setShowModal] = useState(false);
-  const [editUser, setEditUser] = useState(null);
+  const [editUser, setEditUser] = useState<any>(null);
+  const [deleteUser, setDeleteUser] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'Auditee' });
 
   useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
       const data = await userAPI.getAll();
       setUsers(data.data || []);
-    } catch (e) {
+      setError('');
+    } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
@@ -32,13 +60,13 @@ export default function Users() {
     setShowModal(true);
   };
 
-  const openEdit = (u) => {
+  const openEdit = (u: any) => {
     setEditUser(u);
     setForm({ name: u.name, email: u.email, password: '', role: u.role?.name || 'Auditee' });
     setShowModal(true);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
@@ -49,19 +77,20 @@ export default function Users() {
       }
       setShowModal(false);
       await fetchUsers();
-    } catch (e) {
+    } catch (e: any) {
       alert(e.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Hapus pengguna ini?')) return;
+  const confirmDelete = async () => {
+    if (!deleteUser) return;
     try {
-      await userAPI.delete(id);
+      await userAPI.delete(deleteUser.id);
+      setDeleteUser(null);
       await fetchUsers();
-    } catch (e) {
+    } catch (e: any) {
       alert(e.message);
     }
   };
@@ -71,131 +100,192 @@ export default function Users() {
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const RoleBadge = ({ role }) => {
-    const map = {
-      Admin: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-      Assessor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      Auditee: 'bg-amber-100 text-amber-700 border-amber-200',
-    };
-    return <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${map[role] || 'bg-slate-100 text-slate-700'}`}>{role}</span>;
+  const getRoleIcon = (roleName: string) => {
+    if (roleName === 'Admin') return <Shield className="w-3.5 h-3.5 mr-1" />;
+    if (roleName === 'Assessor') return <UserCheck className="w-3.5 h-3.5 mr-1" />;
+    return <UserIcon className="w-3.5 h-3.5 mr-1" />;
+  };
+
+  const getRoleColor = (roleName: string) => {
+    if (roleName === 'Admin') return 'bg-violet-100 text-violet-800 hover:bg-violet-200 border-violet-200';
+    if (roleName === 'Assessor') return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200';
+    return 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200';
   };
 
   return (
-    <div className="space-y-6 relative">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Manajemen Pengguna</h1>
-          <p className="text-slate-500">Kelola pengguna, assessor, dan auditee sistem.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Manajemen Pengguna</h1>
+          <p className="text-muted-foreground text-sm">Kelola akses sistem untuk Administrator, Assessor, dan Auditee.</p>
         </div>
-        <button id="add-user-btn" onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow-sm shadow-indigo-200 transition-all font-medium text-sm flex items-center">
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+        <Button size="lg" onClick={openCreate} className="w-full sm:w-auto h-11 px-6 font-semibold">
+          <Plus className="mr-2 h-5 w-5" />
           Tambah Pengguna
-        </button>
+        </Button>
       </div>
 
-      {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100">{error}</div>}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-          <div className="relative w-64">
-            <input type="text" placeholder="Cari pengguna..." value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
-            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          </div>
-          <span className="text-sm text-slate-500">{filtered.length} pengguna</span>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Pengguna</th>
-                  <th className="px-6 py-4 font-semibold">Role</th>
-                  <th className="px-6 py-4 font-semibold text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(u => (
-                  <tr key={u.id} className="hover:bg-slate-50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-sm mr-3">
-                          {u.name?.substring(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-800">{u.name}</div>
-                          <div className="text-slate-500 text-xs">{u.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <RoleBadge role={u.role?.name} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={() => openEdit(u)} className="text-indigo-600 hover:text-indigo-900 font-medium px-3 py-1 mr-2 rounded-lg hover:bg-indigo-50 transition-colors text-xs">Edit</button>
-                      <button onClick={() => handleDelete(u.id)} className="text-red-500 hover:text-red-700 font-medium px-3 py-1 rounded-lg hover:bg-red-50 transition-colors text-xs">Hapus</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && !loading && (
-              <div className="text-center py-12 text-slate-500">Tidak ada pengguna ditemukan.</div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800">{editUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-50">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
-                <input type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                <input type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-              </div>
-              {!editUser && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                  <input type="password" required minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
-                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">Batal</button>
-                <button type="submit" disabled={submitting} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium disabled:opacity-50">
-                  {submitting ? 'Menyimpan...' : editUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
-                </button>
-              </div>
-            </form>
-          </div>
+      {error && (
+        <div className="bg-destructive/10 text-destructive text-sm font-medium p-4 rounded-lg border border-destructive/20">
+          {error}
         </div>
       )}
+
+      <Card className="border-border shadow-sm">
+        <CardHeader className="p-4 sm:p-6 bg-muted/20 border-b border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg">Daftar Pengguna</CardTitle>
+              <CardDescription>Terdapat {filtered.length} pengguna di dalam sistem</CardDescription>
+            </div>
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari berdasarkan nama atau email..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 w-full bg-background border-input"
+              />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex flex-col justify-center items-center py-20 gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground text-sm font-medium">Memuat data pengguna...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-bold text-foreground">Profil Pengguna</TableHead>
+                    <TableHead className="font-bold text-foreground">Peran (Role)</TableHead>
+                    <TableHead className="font-bold text-foreground text-right pr-6">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length > 0 ? (
+                    filtered.map(u => (
+                      <TableRow key={u.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="py-4">
+                          <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                              {u.name?.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-foreground">{u.name}</div>
+                              <div className="text-muted-foreground text-xs">{u.email}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn("font-semibold border", getRoleColor(u.role?.name))}>
+                            {getRoleIcon(u.role?.name)}
+                            {u.role?.name || 'Auditee'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(u)} className="h-8 w-8 text-muted-foreground hover:text-primary">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteUser(u)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-32 text-center text-muted-foreground">
+                        Tidak ada pengguna yang ditemukan.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal / Dialog Form */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{editUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nama Lengkap <span className="text-destructive">*</span></Label>
+              <Input id="name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Masukkan nama..." />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
+              <Input id="email" type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="nama@perusahaan.com" />
+            </div>
+
+            {!editUser && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password Sementara <span className="text-destructive">*</span></Label>
+                <Input id="password" type="password" required minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Minimal 6 karakter..." />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Hak Akses (Role) <span className="text-destructive">*</span></Label>
+              <Select value={form.role} onValueChange={(val) => setForm({...form, role: val})}>
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Pilih Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map(r => (
+                    <SelectItem key={r} value={r}>
+                      <div className="flex items-center">
+                        {getRoleIcon(r)}
+                        <span className="ml-1">{r}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)} disabled={submitting}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={submitting} className="font-semibold">
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editUser ? 'Simpan Perubahan' : 'Buat Pengguna'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pengguna</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus pengguna <strong className="text-foreground">{deleteUser?.name}</strong>? Tindakan ini tidak dapat dibatalkan dan pengguna tersebut akan kehilangan akses ke sistem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ya, Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
