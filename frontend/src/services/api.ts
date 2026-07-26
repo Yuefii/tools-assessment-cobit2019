@@ -43,7 +43,7 @@ export const cobitAPI = {
 };
 
 export const assessmentAPI = {
-  getAll: () => fetch(`${BASE_URL}/assessments`, { headers: headers() }).then(handleResponse),
+  getAll: (page = 1, limit = 10, search = '') => fetch(`${BASE_URL}/assessments?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, { headers: headers() }).then(handleResponse),
   getById: (id) => fetch(`${BASE_URL}/assessments/${id}`, { headers: headers() }).then(handleResponse),
   create: (data) => fetch(`${BASE_URL}/assessments`, { method: 'POST', headers: headers(), body: JSON.stringify(data) }).then(handleResponse),
   updateStatus: (id, status) => fetch(`${BASE_URL}/assessments/${id}/status`, { method: 'PUT', headers: headers(), body: JSON.stringify({ status }) }).then(handleResponse),

@@ -9,7 +9,7 @@ import (
 
 type AssessmentService interface {
 	CreateAssessment(input CreateAssessmentInput, assessorID uint) (*model.Assessment, error)
-	GetMyAssessments(userID uint, role string) ([]model.Assessment, error)
+	GetMyAssessments(userID uint, role string, page, limit int, search string) ([]model.Assessment, int64, error)
 	GetAssessmentDetails(id uint) (*model.Assessment, error)
 	
 	SubmitAnswer(input SubmitAnswerInput, auditeeID uint, role string) error
@@ -69,15 +69,15 @@ func (s *assessmentService) CreateAssessment(input CreateAssessmentInput, assess
 	return s.repo.GetAssessmentByID(assessment.ID)
 }
 
-func (s *assessmentService) GetMyAssessments(userID uint, role string) ([]model.Assessment, error) {
+func (s *assessmentService) GetMyAssessments(userID uint, role string, page, limit int, search string) ([]model.Assessment, int64, error) {
 	if role == "Admin" {
-		return s.repo.GetAllAssessments()
+		return s.repo.GetAllAssessments(page, limit, search)
 	} else if role == "Assessor" {
-		return s.repo.GetAssessmentsByAssessor(userID)
+		return s.repo.GetAssessmentsByAssessor(userID, page, limit, search)
 	} else if role == "Auditee" {
-		return s.repo.GetAssessmentsByAuditee(userID)
+		return s.repo.GetAssessmentsByAuditee(userID, page, limit, search)
 	}
-	return nil, errors.New("unauthorized role")
+	return nil, 0, errors.New("unauthorized role")
 }
 
 func (s *assessmentService) GetAssessmentDetails(id uint) (*model.Assessment, error) {

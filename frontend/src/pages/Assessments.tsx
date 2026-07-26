@@ -26,7 +26,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, ClipboardList, Loader2, BarChart3, AlertCircle, ChevronDown, ChevronRight, PenSquare, Eye } from 'lucide-react';
+import { Plus, ClipboardList, Loader2, BarChart3, AlertCircle, ChevronDown, ChevronRight, ChevronLeft, PenSquare, Eye, Search } from 'lucide-react';
 
 export default function Assessments() {
   const [assessments, setAssessments] = useState<any[]>([]);
@@ -47,18 +47,36 @@ export default function Assessments() {
   // Form state
   const [form, setForm] = useState({ title: '', target_level: 3, auditee_id: '', scope_note: '' });
 
+  // Pagination & Search state
+  const [page, setPage] = useState(1);
+  const [limit] = useState(9);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   // Scope selection state
   const [scopeMode, setScopeMode] = useState('objective'); // 'domain' | 'objective'
   const [selectedDomainIDs, setSelectedDomainIDs] = useState<Set<number>>(new Set());
   const [selectedObjectiveIDs, setSelectedObjectiveIDs] = useState<Set<number>>(new Set());
   const [expandedDomain, setExpandedDomain] = useState<number | null>(null);
 
-  useEffect(() => { fetchAssessments(); }, []);
+  useEffect(() => { fetchAssessments(); }, [page, limit, debouncedSearch]);
 
   const fetchAssessments = async () => {
     try {
-      const data = await assessmentAPI.getAll();
+      setLoading(true);
+      const data = await assessmentAPI.getAll(page, limit, debouncedSearch);
       setAssessments(data.data || []);
+      setTotal(data.meta?.total || 0);
       setError('');
     } catch (e: any) {
       setError(e.message || 'Terjadi kesalahan');
@@ -205,12 +223,24 @@ export default function Assessments() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Assessments</h1>
           <p className="text-sm text-muted-foreground mt-1">Kelola sesi audit dan pantau progres pengisian kuesioner.</p>
         </div>
-        {canCreate && (
-          <Button onClick={openModal} className="h-10 px-5 font-medium">
-            <Plus className="mr-2 h-4 w-4" />
-            Assessment Baru
-          </Button>
-        )}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Cari judul assessment..."
+              className="pl-9 h-10 bg-background"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {canCreate && (
+            <Button onClick={openModal} className="h-10 px-5 font-medium shrink-0">
+              <Plus className="mr-2 h-4 w-4" />
+              Baru
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -239,76 +269,108 @@ export default function Assessments() {
           )}
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assessments.map(a => (
-            <Card key={a.id} className="flex flex-col overflow-hidden hover:shadow-md transition-shadow">
-              <CardHeader className="p-5 pb-4">
-                <div className="flex justify-between items-start mb-2">
-                  <StatusBadge status={a.status} />
-                  <Badge variant="secondary" className="font-semibold text-[10px] tracking-wider uppercase">
-                    Target: Level {a.target_level}
-                  </Badge>
-                </div>
-                <CardTitle className="text-lg leading-tight mb-1">{a.title}</CardTitle>
-                
-                {/* Scope badges */}
-                <div className="mt-3">
-                  {a.objectives && a.objectives.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {a.objectives.slice(0, 4).map((ao: any, i: number) => (
-                        <Badge key={i} variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20">
-                          {ao.objective?.code || ao.code}
-                        </Badge>
-                      ))}
-                      {a.objectives.length > 4 && (
-                        <Badge variant="secondary" className="text-muted-foreground">
-                          +{a.objectives.length - 4} lainnya
-                        </Badge>
-                      )}
-                    </div>
-                  ) : (
-                    <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
-                      {a.domain?.code || 'Multi-domain'}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {assessments.map(a => (
+              <Card key={a.id} className="flex flex-col overflow-hidden hover:shadow-md transition-shadow">
+                <CardHeader className="p-5 pb-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <StatusBadge status={a.status} />
+                    <Badge variant="secondary" className="font-semibold text-[10px] tracking-wider uppercase">
+                      Target: Level {a.target_level}
                     </Badge>
-                  )}
-                </div>
-                <CardDescription className="mt-3 text-[13px] line-clamp-2">
-                  {getScopeLabel(a)}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="p-5 pt-0 flex-1">
-                <div className="flex items-center gap-3 pt-3 border-t border-border/50">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-xs border text-muted-foreground">
-                    {a.auditee?.name?.substring(0, 2).toUpperCase() || '?'}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Auditee</span>
-                    <span className="text-sm font-medium leading-none mt-0.5 truncate">{a.auditee?.name || 'Belum ditugaskan'}</span>
+                  <CardTitle className="text-lg leading-tight mb-1">{a.title}</CardTitle>
+                  
+                  {/* Scope badges */}
+                  <div className="mt-3">
+                    {a.objectives && a.objectives.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {a.objectives.slice(0, 4).map((ao: any, i: number) => (
+                          <Badge key={i} variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20">
+                            {ao.objective?.code || ao.code}
+                          </Badge>
+                        ))}
+                        {a.objectives.length > 4 && (
+                          <Badge variant="secondary" className="text-muted-foreground">
+                            +{a.objectives.length - 4} lainnya
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
+                        {a.domain?.code || 'Multi-domain'}
+                      </Badge>
+                    )}
                   </div>
-                </div>
-              </CardContent>
+                  <CardDescription className="mt-3 text-[13px] line-clamp-2">
+                    {getScopeLabel(a)}
+                  </CardDescription>
+                </CardHeader>
 
-              <CardFooter className="p-4 bg-muted/30 border-t gap-2">
-                <Button 
-                  onClick={() => navigate(`/dashboard/assessments/${a.id}/fill`)} 
-                  className="w-full flex-1"
+                <CardContent className="p-5 pt-0 flex-1">
+                  <div className="flex items-center gap-3 pt-3 border-t border-border/50">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-xs border text-muted-foreground">
+                      {a.auditee?.name?.substring(0, 2).toUpperCase() || '?'}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Auditee</span>
+                      <span className="text-sm font-medium leading-none mt-0.5 truncate">{a.auditee?.name || 'Belum ditugaskan'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="p-4 bg-muted/30 border-t gap-2">
+                  <Button 
+                    onClick={() => navigate(`/dashboard/assessments/${a.id}/fill`)} 
+                    className="w-full flex-1"
+                  >
+                    <PenSquare className="mr-2 h-4 w-4" />
+                    Isi Kuesioner
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)}
+                    title="Lihat Laporan"
+                    className="shrink-0"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {total > limit && (
+            <div className="flex items-center justify-between border-t pt-4">
+              <div className="text-sm text-muted-foreground hidden sm:block">
+                Menampilkan <span className="font-medium text-foreground">{assessments.length}</span> dari <span className="font-medium text-foreground">{total}</span> assessment
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
                 >
-                  <PenSquare className="mr-2 h-4 w-4" />
-                  Isi Kuesioner
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Sebelumnya</span>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => navigate(`/dashboard/assessments/${a.id}/report`)}
-                  title="Lihat Laporan"
-                  className="shrink-0"
+                <div className="text-sm font-medium px-2">
+                  Halaman {page} dari {Math.ceil(total / limit) || 1}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= Math.ceil(total / limit)}
                 >
-                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Selanjutnya</span> <ChevronRight className="h-4 w-4 sm:ml-1" />
                 </Button>
-              </CardFooter>
-            </Card>
-          ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

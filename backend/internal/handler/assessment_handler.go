@@ -38,12 +38,29 @@ func (h *AssessmentHandler) GetMyAssessments(c *fiber.Ctx) error {
 	userID := uint(c.Locals("user_id").(float64))
 	role := c.Locals("role").(string)
 
-	assessments, err := h.assessmentService.GetMyAssessments(userID, role)
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	if limit < 1 {
+		limit = 10
+	}
+	search := c.Query("search", "")
+
+	assessments, total, err := h.assessmentService.GetMyAssessments(userID, role, page, limit, search)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"data": assessments})
+	return c.JSON(fiber.Map{
+		"data": assessments,
+		"meta": fiber.Map{
+			"total": total,
+			"page":  page,
+			"limit": limit,
+		},
+	})
 }
 
 func (h *AssessmentHandler) GetAssessmentDetails(c *fiber.Ctx) error {

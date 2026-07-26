@@ -7,10 +7,10 @@ import (
 
 type AssessmentRepository interface {
 	CreateAssessment(assessment *model.Assessment) error
-	GetAllAssessments() ([]model.Assessment, error)
+	GetAllAssessments(page, limit int, search string) ([]model.Assessment, int64, error)
 	GetAssessmentByID(id uint) (*model.Assessment, error)
-	GetAssessmentsByAuditee(auditeeID uint) ([]model.Assessment, error)
-	GetAssessmentsByAssessor(assessorID uint) ([]model.Assessment, error)
+	GetAssessmentsByAuditee(auditeeID uint, page, limit int, search string) ([]model.Assessment, int64, error)
+	GetAssessmentsByAssessor(assessorID uint, page, limit int, search string) ([]model.Assessment, int64, error)
 	
 	SubmitAnswer(answer *model.Answer) error
 	GetAnswersByAssessment(assessmentID uint) ([]model.Answer, error)
@@ -32,10 +32,18 @@ func (r *assessmentRepository) CreateAssessment(assessment *model.Assessment) er
 	return r.db.Create(assessment).Error
 }
 
-func (r *assessmentRepository) GetAllAssessments() ([]model.Assessment, error) {
+func (r *assessmentRepository) GetAllAssessments(page, limit int, search string) ([]model.Assessment, int64, error) {
 	var assessments []model.Assessment
-	err := r.db.Preload("Assessor").Preload("Auditee").Preload("Objectives.Objective").Find(&assessments).Error
-	return assessments, err
+	query := r.db.Model(&model.Assessment{})
+	if search != "" {
+		query = query.Where("title LIKE ?", "%"+search+"%")
+	}
+	var total int64
+	query.Count(&total)
+	offset := (page - 1) * limit
+	err := query.Preload("Assessor").Preload("Auditee").Preload("Objectives.Objective").
+		Offset(offset).Limit(limit).Find(&assessments).Error
+	return assessments, total, err
 }
 
 func (r *assessmentRepository) GetAssessmentByID(id uint) (*model.Assessment, error) {
@@ -48,16 +56,32 @@ func (r *assessmentRepository) GetAssessmentByID(id uint) (*model.Assessment, er
 	return &assessment, err
 }
 
-func (r *assessmentRepository) GetAssessmentsByAuditee(auditeeID uint) ([]model.Assessment, error) {
+func (r *assessmentRepository) GetAssessmentsByAuditee(auditeeID uint, page, limit int, search string) ([]model.Assessment, int64, error) {
 	var assessments []model.Assessment
-	err := r.db.Preload("Assessor").Preload("Objectives.Objective").Where("auditee_id = ?", auditeeID).Find(&assessments).Error
-	return assessments, err
+	query := r.db.Model(&model.Assessment{}).Where("auditee_id = ?", auditeeID)
+	if search != "" {
+		query = query.Where("title LIKE ?", "%"+search+"%")
+	}
+	var total int64
+	query.Count(&total)
+	offset := (page - 1) * limit
+	err := query.Preload("Assessor").Preload("Objectives.Objective").
+		Offset(offset).Limit(limit).Find(&assessments).Error
+	return assessments, total, err
 }
 
-func (r *assessmentRepository) GetAssessmentsByAssessor(assessorID uint) ([]model.Assessment, error) {
+func (r *assessmentRepository) GetAssessmentsByAssessor(assessorID uint, page, limit int, search string) ([]model.Assessment, int64, error) {
 	var assessments []model.Assessment
-	err := r.db.Preload("Auditee").Preload("Objectives.Objective").Where("assessor_id = ?", assessorID).Find(&assessments).Error
-	return assessments, err
+	query := r.db.Model(&model.Assessment{}).Where("assessor_id = ?", assessorID)
+	if search != "" {
+		query = query.Where("title LIKE ?", "%"+search+"%")
+	}
+	var total int64
+	query.Count(&total)
+	offset := (page - 1) * limit
+	err := query.Preload("Auditee").Preload("Objectives.Objective").
+		Offset(offset).Limit(limit).Find(&assessments).Error
+	return assessments, total, err
 }
 
 func (r *assessmentRepository) SubmitAnswer(answer *model.Answer) error {
